@@ -1756,6 +1756,10 @@ input, textarea, select, button { font-family: inherit; }
 
 /* --------------------------- Responsive --------------------------- */
 
+@media (max-width: 980px) {
+  .brand-text { display: none; }
+}
+
 @media (max-width: 900px) {
   .grid-2 { grid-template-columns: 1fr; }
   .schedule-board { grid-auto-columns: minmax(138px, 1fr); }
