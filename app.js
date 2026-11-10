@@ -1,0 +1,756 @@
+// Arranque, navegación y eventos de Mi Estudio.
+import {
+  getState, load, replaceState, subscribe, subjectById,
+  update, uid, exportJSON,
+} from './js/store.js';
+import { addDays, buildICS, fmtLong, todayISO, diffDays } from './js/dates.js';
+import {
+  buildSession, answerCurrent, currentItem, nextQuestion, buildAttempt,
+  buildFlashcards, currentCard, answerCard, cardSummary,
+} from './js/quiz.js';
+import {
+  esc, toast, openModal, closeModal, isModalOpen, downloadFile,
+} from './js/ui.js';
+import * as views from './js/views.js';
+
+const state = load();
+const viewEl = document.getElementById('view');
+const brandSub = document.getElementById('brand-sub');
+const navButtons = [...document.querySelectorAll('.nav [data-view]')];
+
+const route = { view: 'hoy', subjectId: null };
+let quizSession = null;
+let cardsSession = null;
+let noteFilter = '';
+let calMonth = { year: new Date().getFullYear(), month: new Date().getMonth() };
+let modal = null;
+let recordedSessions = new Set();
+
+/* ----------------------------- Render ----------------------------- */
+
+function render() {
+  const current = getState();
+  const today = todayISO();
+  let html = '';
+
+  if (route.view === 'hoy') {
+    html = views.renderHoy(current, { today });
+  } else if (route.view === 'calendario') {
+    html = views.renderCalendario(current, { today, month: calMonth });
+  } else if (route.view === 'materias') {
+    html = views.renderMaterias(current);
+  } else if (route.view === 'subject') {
+    const subject = subjectById(route.subjectId, current);
+    html = subject ? views.renderSubjectDetail(current, subject) : views.renderMaterias(current);
+  } else if (route.view === 'practica') {
+    html = views.renderPractica(current, { today });
+  } else if (route.view === 'apuntes') {
+    html = views.renderApuntes(current, { subjectId: noteFilter || null });
+  } else if (route.view === 'quiz') {
+    html = views.renderQuiz(quizSession, current);
+  } else if (route.view === 'tarjetas') {
+    html = views.renderFlashcards(cardsSession, current);
+  } else if (route.view === 'ajustes') {
+    html = views.renderAjustes(current);
+  }
+
+  viewEl.innerHTML = html;
+  document.body.dataset.view = route.view;
+
+  const activeView = route.view === 'subject' ? 'materias' : route.view === 'tarjetas' ? 'practica' : route.view;
+  for (const btn of navButtons) {
+    btn.classList.toggle('is-active', btn.dataset.view === activeView);
+  }
+
+  const name = (current.student || '').trim();
+  brandSub.textContent = name ? `El espacio de ${name}` : 'Calendario y práctica';
+  document.title = name ? `Mi Estudio · ${name}` : 'Mi Estudio';
+}
+
+function go(next) {
+  Object.assign(route, next);
+  closeModal();
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  render();
+  viewEl.focus({ preventScroll: true });
+}
+
+/* ----------------------------- Modales ----------------------------- */
+
+function showModal(kind, payload = {}) {
+  modal = { kind, payload };
+  const current = getState();
+  let html = '';
+  let label = 'Ventana';
+
+  if (kind === 'exam') {
+    html = views.renderExamForm(current, payload);
+    label = payload.exam ? 'Editar examen' : 'Agregar examen';
+  } else if (kind === 'subject') {
+    html = views.renderSubjectForm(current, payload);
+    label = payload.subject ? 'Editar materia' : 'Agregar materia';
+  } else if (kind === 'question') {
+    html = views.renderQuestionForm(current, payload);
+    label = 'Pregunta';
+  } else if (kind === 'day') {
+    html = views.renderDaySheet(current, payload.date);
+    label = 'Día';
+  } else if (kind === 'confirm') {
+    html = views.renderConfirm(payload);
+    label = 'Confirmar';
+  } else if (kind === 'note') {
+    html = views.renderNoteForm(current, payload);
+    label = payload.note ? 'Editar apunte' : 'Nuevo apunte';
+  } else if (kind === 'note-view') {
+    html = views.renderNoteView(current, payload.note);
+    label = 'Apunte';
+  } else if (kind === 'onboarding') {
+    html = views.renderOnboarding();
+    label = 'Bienvenida';
+  }
+
+  openModal(html, { label });
+}
+
+/* ----------------------------- Acciones ----------------------------- */
+
+function startQuiz({ subjectId = null, mode = 'practice', questionIds = null, count = 10 } = {}) {
+  const session = buildSession({ subjectId, mode, questionIds, count });
+  if (!session) {
+    toast('No hay preguntas para practicar todavía', 'warn');
+    return;
+  }
+  quizSession = session;
+  go({ view: 'quiz' });
+}
+
+function recordIfNeeded() {
+  if (!quizSession || !quizSession.finished) return;
+  if (recordedSessions.has(quizSession.id)) return;
+  recordedSessions.add(quizSession.id);
+  const attempt = buildAttempt(quizSession);
+  update((s) => {
+    s.attempts.unshift(attempt);
+    s.attempts = s.attempts.slice(0, 40);
+    for (const ans of attempt.answers) {
+      const q = s.questions.find((x) => x.id === ans.questionId);
+      if (!q) continue;
+      q.stats = q.stats || { correct: 0, wrong: 0, lastSeen: null };
+      if (ans.correct) q.stats.correct += 1;
+      else q.stats.wrong += 1;
+      q.stats.lastSeen = new Date().toISOString();
+    }
+    if (!s.daysStudied.includes(attempt.date)) s.daysStudied.push(attempt.date);
+  });
+}
+
+function recordCardsIfNeeded() {
+  if (!cardsSession || !cardsSession.finished) return;
+  if (recordedSessions.has(cardsSession.id)) return;
+  recordedSessions.add(cardsSession.id);
+  const results = [...cardsSession.results];
+  update((s) => {
+    for (const result of results) {
+      const question = s.questions.find((q) => q.id === result.questionId);
+      if (!question) continue;
+      question.stats = question.stats || { correct: 0, wrong: 0, lastSeen: null };
+      if (result.ok) question.stats.correct += 1;
+      else question.stats.wrong += 1;
+      question.stats.lastSeen = new Date().toISOString();
+    }
+    const today = todayISO();
+    if (!s.daysStudied.includes(today)) s.daysStudied.push(today);
+  });
+}
+
+function startFlashcards({ subjectId = null, questionIds = null } = {}) {
+  const session = buildFlashcards({ subjectId, questionIds });
+  if (!session) {
+    toast('No hay preguntas para armar tarjetas todavía', 'warn');
+    return;
+  }
+  cardsSession = session;
+  go({ view: 'tarjetas' });
+}
+
+function shareExam(examId) {
+  const current = getState();
+  const exam = current.exams.find((e) => e.id === examId);
+  if (!exam) return;
+  const subject = subjectById(exam.subjectId, current);
+  const topics = (exam.topics || []).filter(Boolean);
+  const text = [
+    `📅 ${subject ? subject.name : 'Examen'}: ${exam.title}`,
+    `🗓️ ${fmtLong(exam.date)}`,
+    topics.length ? `📚 Temas: ${topics.join(' · ')}` : '',
+    exam.notes ? `📝 ${exam.notes}` : '',
+  ].filter(Boolean).join('\n');
+
+  if (navigator.share) {
+    navigator.share({ title: `Examen de ${subject ? subject.name : ''}`, text }).catch(() => {});
+  } else {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+  }
+}
+
+function exportCalendar() {
+  const current = getState();
+  if (!current.exams.length) {
+    toast('Todavía no hay exámenes para exportar', 'warn');
+    return;
+  }
+  const ics = buildICS(current.exams, current.subjects, 'Exámenes');
+  downloadFile('examenes.ics', ics, 'text/calendar');
+  toast('Archivo .ics descargado. Abrilo para sumarlo al Calendario del iPad.');
+}
+
+function exportBackup() {
+  downloadFile(`mi-estudio-backup-${todayISO()}.json`, exportJSON());
+  toast('Backup descargado');
+}
+
+async function importBackup(file) {
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || !Array.isArray(data.subjects) || !Array.isArray(data.questions)) {
+      throw new Error('Formato inválido');
+    }
+    replaceState(data);
+    go({ view: 'hoy' });
+    toast('Backup importado');
+  } catch (err) {
+    console.error(err);
+    toast('No pude leer ese archivo', 'warn');
+  }
+}
+
+function deleteExam(id) {
+  const current = getState();
+  const exam = current.exams.find((e) => e.id === id);
+  showModal('confirm', {
+    title: '¿Borrar este examen?',
+    text: exam ? `"${exam.title}" (${fmtLong(exam.date)}) se va a borrar del calendario.` : 'Se va a borrar del calendario.',
+    confirmLabel: 'Borrar examen',
+    action: 'confirm-delete-exam',
+    id,
+  });
+}
+
+function deleteQuestion(id) {
+  showModal('confirm', {
+    title: '¿Borrar esta pregunta?',
+    text: 'La pregunta y su historial de respuestas se van a borrar.',
+    confirmLabel: 'Borrar pregunta',
+    action: 'confirm-delete-question',
+    id,
+  });
+}
+
+function deleteSubject(id) {
+  const current = getState();
+  const subject = subjectById(id, current);
+  const qs = current.questions.filter((q) => q.subjectId === id).length;
+  const exams = current.exams.filter((e) => e.subjectId === id).length;
+  showModal('confirm', {
+    title: `¿Borrar ${subject ? subject.name : 'la materia'}?`,
+    text: `También se van a borrar ${qs} pregunta(s) y ${exams} examen(es) de esa materia.`,
+    confirmLabel: 'Borrar materia',
+    action: 'confirm-delete-subject',
+    id,
+  });
+}
+
+/* --------------------------- Delegación --------------------------- */
+
+document.addEventListener('click', (event) => {
+  const el = event.target.closest('[data-action]');
+  if (!el) return;
+  const action = el.dataset.action;
+  if (action === 'close-modal' && el.classList.contains('modal-backdrop') && event.target !== el) return;
+
+  switch (action) {
+    case 'nav':
+      go({ view: el.dataset.view, subjectId: el.dataset.id || null });
+      return;
+    case 'close-modal':
+      closeModal();
+      return;
+    case 'open-subject':
+      go({ view: 'subject', subjectId: el.dataset.id });
+      return;
+    case 'add-exam': {
+      if (isModalOpen()) closeModal();
+      showModal('exam', { date: el.dataset.date || todayISO() });
+      return;
+    }
+    case 'edit-exam': {
+      const exam = getState().exams.find((e) => e.id === el.dataset.id);
+      if (exam) { closeModal(); showModal('exam', { exam }); }
+      return;
+    }
+    case 'delete-exam':
+      deleteExam(el.dataset.id);
+      return;
+    case 'add-subject':
+      showModal('subject');
+      return;
+    case 'edit-subject': {
+      const subject = subjectById(el.dataset.id);
+      if (subject) showModal('subject', { subject });
+      return;
+    }
+    case 'delete-subject':
+      deleteSubject(el.dataset.id);
+      return;
+    case 'add-question':
+      closeModal();
+      showModal('question', { subjectId: el.dataset.subject || null });
+      return;
+    case 'edit-question': {
+      const q = getState().questions.find((x) => x.id === el.dataset.id);
+      if (q) showModal('question', { question: q });
+      return;
+    }
+    case 'delete-question':
+      deleteQuestion(el.dataset.id);
+      return;
+    case 'add-option': {
+      const form = el.closest('form');
+      const editor = form.querySelector('[data-option-editor]');
+      const count = editor.querySelectorAll('.option-row').length;
+      if (count >= 6) { toast('Máximo 6 opciones', 'warn'); return; }
+      const letters = 'ABCDEFGH';
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.innerHTML = `
+        <label class="option-radio">
+          <input type="radio" name="correct" value="${count}">
+          <span>${letters[count]}</span>
+        </label>
+        <input type="text" class="opt-input" placeholder="Opción ${letters[count]}">
+        <button type="button" class="icon-btn" data-action="remove-option" aria-label="Quitar opción">✕</button>`;
+      editor.appendChild(row);
+      return;
+    }
+    case 'remove-option': {
+      const row = el.closest('.option-row');
+      const editor = row.parentElement;
+      if (editor.querySelectorAll('.option-row').length <= 2) { toast('Dejá al menos 2 opciones', 'warn'); return; }
+      row.remove();
+      return;
+    }
+    case 'select-day':
+      showModal('day', { date: el.dataset.date });
+      return;
+    case 'cal-shift': {
+      const delta = Number(el.dataset.delta);
+      const next = new Date(calMonth.year, calMonth.month + delta, 1);
+      calMonth = { year: next.getFullYear(), month: next.getMonth() };
+      render();
+      return;
+    }
+    case 'cal-today': {
+      const now = new Date();
+      calMonth = { year: now.getFullYear(), month: now.getMonth() };
+      render();
+      return;
+    }
+    case 'start-quiz': {
+      const subjectId = el.dataset.subject || null;
+      const mode = el.dataset.mode || 'practice';
+      closeModal();
+      startQuiz({ subjectId, mode });
+      return;
+    }
+    case 'answer': {
+      if (!quizSession) return;
+      const item = currentItem(quizSession);
+      if (!item || item.ok !== null) return;
+      answerCurrent(quizSession, Number(el.dataset.index));
+      render();
+      return;
+    }
+    case 'next-question': {
+      if (!quizSession) return;
+      nextQuestion(quizSession);
+      if (quizSession.finished) recordIfNeeded();
+      render();
+      return;
+    }
+    case 'quit-quiz':
+      quizSession = null;
+      go({ view: 'practica' });
+      return;
+    case 'retry-wrong': {
+      if (!quizSession) return;
+      const ids = quizSession.items.filter((i) => !i.ok).map((i) => i.question.id);
+      startQuiz({ questionIds: ids, mode: 'practice' });
+      return;
+    }
+    case 'start-flashcards':
+      closeModal();
+      startFlashcards({ subjectId: el.dataset.subject || null });
+      return;
+    case 'flip-card':
+      if (!cardsSession) return;
+      cardsSession.flipped = !cardsSession.flipped;
+      render();
+      return;
+    case 'card-answer':
+      if (!cardsSession) return;
+      answerCard(cardsSession, el.dataset.ok === '1');
+      if (cardsSession.finished) recordCardsIfNeeded();
+      render();
+      return;
+    case 'quit-cards':
+      cardsSession = null;
+      go({ view: 'practica' });
+      return;
+    case 'retry-cards': {
+      if (!cardsSession) return;
+      const ids = cardsSession.results.filter((r) => !r.ok).map((r) => r.questionId);
+      startFlashcards({ questionIds: ids });
+      return;
+    }
+    case 'add-note':
+      closeModal();
+      showModal('note', { subjectId: el.dataset.subject || null });
+      return;
+    case 'view-note': {
+      const note = getState().notes.find((n) => n.id === el.dataset.id);
+      if (note) showModal('note-view', { note });
+      return;
+    }
+    case 'edit-note': {
+      const note = getState().notes.find((n) => n.id === el.dataset.id);
+      if (note) { closeModal(); showModal('note', { note }); }
+      return;
+    }
+    case 'delete-note': {
+      const note = getState().notes.find((n) => n.id === el.dataset.id);
+      if (!note) return;
+      showModal('confirm', {
+        title: '¿Borrar este apunte?',
+        text: `"${note.title}" se va a borrar para siempre.`,
+        confirmLabel: 'Borrar apunte',
+        action: 'confirm-delete-note',
+        id: note.id,
+      });
+      return;
+    }
+    case 'confirm-delete-note':
+      update((s) => { s.notes = s.notes.filter((n) => n.id !== el.dataset.id); });
+      closeModal();
+      toast('Apunte borrado');
+      return;
+    case 'filter-notes':
+      noteFilter = el.dataset.subject || '';
+      render();
+      return;
+    case 'toggle-task': {
+      const key = el.dataset.key;
+      const done = el.dataset.done === '1';
+      update((s) => {
+        if (done) delete s.planDone[key];
+        else s.planDone[key] = true;
+      });
+      return;
+    }
+    case 'share-exam':
+      shareExam(el.dataset.id);
+      return;    case 'export-ics':
+      exportCalendar();
+      return;
+    case 'export-json':
+      exportBackup();
+      return;
+    case 'clear-demo':
+      showModal('confirm', {
+        title: '¿Borrar los datos de ejemplo?',
+        text: 'Se van a borrar solo las materias, exámenes, preguntas y apuntes de ejemplo. Lo que hayas cargado vos queda.',
+        confirmLabel: 'Borrar ejemplos',
+        action: 'confirm-clear-demo',
+      });
+      return;
+    case 'confirm-clear-demo':
+      update((s) => {
+        s.exams = s.exams.filter((e) => !e.demo);
+        s.questions = s.questions.filter((q) => !q.demo);
+        s.notes = (s.notes || []).filter((n) => !n.demo);
+        const used = new Set(s.exams.map((e) => e.subjectId).concat(s.questions.map((q) => q.subjectId)));
+        s.subjects = s.subjects.filter((sub) => !(['mat', 'his', 'bio'].includes(sub.id) && !used.has(sub.id)));
+        s.settings.showDemo = false;
+      });
+      closeModal();
+      toast('Datos de ejemplo borrados');
+      return;
+    case 'reset-app':
+      showModal('confirm', {
+        title: '¿Empezar de cero?',
+        text: 'Se borran todas las materias, exámenes, preguntas y resultados de este dispositivo. No se puede deshacer.',
+        confirmLabel: 'Sí, borrar todo',
+        action: 'confirm-reset',
+      });
+      return;
+    case 'confirm-reset':
+      update((s) => {
+        s.student = '';
+        s.subjects = [];
+        s.exams = [];
+        s.questions = [];
+        s.attempts = [];
+        s.planDone = {};
+        s.daysStudied = [];
+      });
+      closeModal();
+      quizSession = null;
+      go({ view: 'hoy' });
+      toast('Listo, empezamos de cero');
+      return;
+    case 'confirm-delete-exam':
+      update((s) => { s.exams = s.exams.filter((e) => e.id !== el.dataset.id); });
+      closeModal();
+      toast('Examen borrado');
+      return;
+    case 'confirm-delete-question':
+      update((s) => { s.questions = s.questions.filter((q) => q.id !== el.dataset.id); });
+      closeModal();
+      toast('Pregunta borrada');
+      return;
+    case 'confirm-delete-subject': {
+      const id = el.dataset.id;
+      update((s) => {
+        s.subjects = s.subjects.filter((x) => x.id !== id);
+        s.exams = s.exams.filter((e) => e.subjectId !== id);
+        s.questions = s.questions.filter((q) => q.subjectId !== id);
+      });
+      closeModal();
+      go({ view: 'materias' });
+      toast('Materia borrada');
+      return;
+    }
+    default:
+      return;
+  }
+});
+
+/* ------------------------------ Forms ------------------------------ */
+
+document.addEventListener('submit', (event) => {
+  const form = event.target.closest('form[data-form]');
+  if (!form) return;
+  event.preventDefault();
+  const kind = form.dataset.form;
+  const data = new FormData(form);
+
+  if (kind === 'exam') {
+    const title = String(data.get('title') || '').trim();
+    const date = String(data.get('date') || '').trim();
+    const subjectId = String(data.get('subjectId') || '');
+    if (!title || !date || !subjectId) { toast('Completá materia, título y fecha', 'warn'); return; }
+    const topics = String(data.get('topics') || '')
+      .split('\n').map((t) => t.trim()).filter(Boolean);
+    const notes = String(data.get('notes') || '').trim();
+    const id = form.dataset.id;
+    update((s) => {
+      if (id) {
+        const exam = s.exams.find((e) => e.id === id);
+        if (exam) Object.assign(exam, { subjectId, title, date, topics, notes, demo: false });
+      } else {
+        s.exams.push({ id: uid('ex'), subjectId, title, date, topics, notes });
+      }
+    });
+    closeModal();
+    toast(id ? 'Examen actualizado' : 'Examen agregado');
+    return;
+  }
+
+  if (kind === 'subject') {
+    const name = String(data.get('name') || '').trim();
+    const emoji = String(data.get('emoji') || '').trim() || '📘';
+    const color = String(data.get('color') || '#5b4bf5');
+    if (!name) { toast('Poné un nombre', 'warn'); return; }
+    const id = form.dataset.id;
+    update((s) => {
+      if (id) {
+        const subject = s.subjects.find((x) => x.id === id);
+        if (subject) Object.assign(subject, { name, emoji, color });
+      } else {
+        s.subjects.push({ id: uid('sub'), name, emoji, color });
+      }
+    });
+    closeModal();
+    toast(id ? 'Materia actualizada' : 'Materia agregada');
+    return;
+  }
+
+  if (kind === 'question') {
+    const text = String(data.get('text') || '').trim();
+    const subjectId = String(data.get('subjectId') || '');
+    const topic = String(data.get('topic') || '').trim();
+    const explanation = String(data.get('explanation') || '').trim();
+    if (!text || !subjectId) { toast('Completá la pregunta y la materia', 'warn'); return; }
+
+    const rows = [...form.querySelectorAll('.option-row')];
+    const values = rows.map((row) => (row.querySelector('.opt-input')?.value || '').trim());
+    const checked = form.querySelector('input[name="correct"]:checked');
+    if (!checked) { toast('Marcá cuál es la opción correcta', 'warn'); return; }
+    const checkedRow = checked.closest('.option-row');
+    const checkedIndex = rows.indexOf(checkedRow);
+
+    const kept = [];
+    values.forEach((value, index) => { if (value) kept.push({ value, index }); });
+    if (kept.length < 2) { toast('Cargá al menos 2 opciones', 'warn'); return; }
+    const correct = kept.findIndex((item) => item.index === checkedIndex);
+    if (correct === -1) { toast('La opción correcta no puede estar vacía', 'warn'); return; }
+
+    const id = form.dataset.id;
+    update((s) => {
+      const payload = {
+        subjectId, topic, text,
+        options: kept.map((item) => item.value),
+        correct,
+        explanation,
+      };
+      if (id) {
+        const q = s.questions.find((x) => x.id === id);
+        if (q) Object.assign(q, payload, { demo: false });
+      } else {
+        s.questions.push({ id: uid('q'), ...payload, stats: { correct: 0, wrong: 0, lastSeen: null } });
+      }
+    });
+    closeModal();
+    toast(id ? 'Pregunta actualizada' : 'Pregunta agregada');
+    return;
+  }
+
+  if (kind === 'note') {
+    const title = String(data.get('title') || '').trim();
+    const body = String(data.get('body') || '').trim();
+    const subjectId = String(data.get('subjectId') || '');
+    if (!title || !body || !subjectId) { toast('Completá materia, título y apunte', 'warn'); return; }
+    const id = form.dataset.id;
+    const now = new Date().toISOString();
+    update((s) => {
+      if (id) {
+        const note = s.notes.find((n) => n.id === id);
+        if (note) Object.assign(note, { subjectId, title, body, updatedAt: now, demo: false });
+      } else {
+        s.notes.push({ id: uid('note'), subjectId, title, body, createdAt: now, updatedAt: now });
+      }
+    });
+    closeModal();
+    toast(id ? 'Apunte actualizado' : 'Apunte guardado');
+    return;
+  }
+
+  if (kind === 'name') {
+    const student = String(data.get('student') || '').trim();
+    update((s) => { s.student = student; });
+    toast('Guardado');
+    render();
+    return;
+  }
+
+  if (kind === 'onboarding') {
+    const student = String(data.get('student') || '').trim();
+    update((s) => { s.student = student; s.settings.onboarded = true; });
+    closeModal();
+    toast(`¡Bienvenida${student ? ', ' + student : ''}!`);
+    render();
+  }
+});
+
+document.addEventListener('change', (event) => {
+  const input = event.target.closest('input[data-action="import-json"]');
+  if (input && input.files && input.files[0]) {
+    importBackup(input.files[0]);
+    input.value = '';
+  }
+});
+
+// Buscar dentro de los apuntes sin volver a dibujar (para no perder el foco).
+document.addEventListener('input', (event) => {
+  const search = event.target.closest('[data-role="note-search"]');
+  if (!search) return;
+  const term = search.value.trim().toLowerCase();
+  let visible = 0;
+  for (const card of document.querySelectorAll('.note-card')) {
+    const haystack = card.dataset.search || card.textContent.toLowerCase();
+    const show = !term || haystack.includes(term);
+    card.hidden = !show;
+    if (show) visible += 1;
+  }
+  const empty = document.querySelector('.notes-empty');
+  if (empty) empty.hidden = visible > 0;
+});
+
+/* ----------------------------- Teclado ----------------------------- */
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && isModalOpen()) {
+    closeModal();
+    return;
+  }
+  if (isModalOpen()) return;
+  if (route.view === 'tarjetas' && cardsSession && !cardsSession.finished) {
+    const target = event.target;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+    if (event.key === ' ' || event.key === 'Enter') {
+      event.preventDefault();
+      cardsSession.flipped = !cardsSession.flipped;
+      render();
+      return;
+    }
+    if (cardsSession.flipped && (event.key === '1' || event.key === '2')) {
+      event.preventDefault();
+      answerCard(cardsSession, event.key === '2');
+      if (cardsSession.finished) recordCardsIfNeeded();
+      render();
+      return;
+    }
+    return;
+  }
+  if (route.view !== 'quiz' || !quizSession) return;
+  const item = currentItem(quizSession);
+  if (!item) return;
+  const target = event.target;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+
+  if (item.ok === null && /^[1-9]$/.test(event.key)) {
+    const index = Number(event.key) - 1;
+    if (index < item.options.length) {
+      answerCurrent(quizSession, index);
+      render();
+    }
+  } else if (item.ok !== null && (event.key === 'Enter' || event.key === ' ')) {
+    event.preventDefault();
+    nextQuestion(quizSession);
+    if (quizSession.finished) recordIfNeeded();
+    render();
+  }
+});
+
+/* --------------------------- Arranque --------------------------- */
+
+// Cualquier cambio en los datos vuelve a dibujar la vista actual.
+subscribe(() => render());
+
+render();
+
+if (!state.student && !state.settings.onboarded) {
+  showModal('onboarding');
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch((err) => {
+      console.warn('Service worker no registrado', err);
+    });
+  });
+}
+
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && route.view === 'hoy') render();
+});

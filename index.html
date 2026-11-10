@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mi Estudio</title>
+  <meta name="description" content="Calendario de exámenes y práctica con multiple choice, para estudiar desde el iPad.">
+
+  <meta name="theme-color" content="#5b4bf5">
+  <meta name="color-scheme" content="light">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Mi Estudio">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="#" data-action="nav" data-view="hoy">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z"></path>
+            <path d="M19 18v3H6.5A2.5 2.5 0 0 1 4 18.5"></path>
+            <path d="m8.5 10 2 2 3.5-4"></path>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <strong>Mi Estudio</strong>
+          <small id="brand-sub">Calendario y práctica</small>
+        </span>
+      </a>
+      <nav class="nav" aria-label="Secciones">
+        <button type="button" data-action="nav" data-view="hoy">Hoy</button>
+        <button type="button" data-action="nav" data-view="calendario">Calendario</button>
+        <button type="button" data-action="nav" data-view="materias">Materias</button>
+        <button type="button" data-action="nav" data-view="apuntes">Apuntes</button>
+        <button type="button" data-action="nav" data-view="practica">Práctica</button>
+        <button type="button" data-action="nav" data-view="ajustes" class="nav-icon" aria-label="Ajustes">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path>
+          </svg>
+        </button>
+      </nav>
+    </header>
+
+    <main id="view" class="view" tabindex="-1"></main>
+
+    <footer class="footer">
+      <span id="footer-note">Tus datos se guardan en este dispositivo.</span>
+    </footer>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <noscript>
+    <p style="padding:24px;font-family:system-ui">Necesitás activar JavaScript para usar Mi Estudio.</p>
+  </noscript>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

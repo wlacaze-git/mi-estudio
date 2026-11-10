@@ -1,0 +1,36 @@
+{
+  "name": "Mi Estudio",
+  "short_name": "Mi Estudio",
+  "description": "Calendario de exámenes, plan de repaso y preguntas de multiple choice para estudiar.",
+  "id": "mi-estudio",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#f4f3fb",
+  "theme_color": "#5b4bf5",
+  "lang": "es",
+  "dir": "ltr",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
