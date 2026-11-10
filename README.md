@@ -2,9 +2,13 @@
 
 **App publicada:** <https://wlacaze-git.github.io/mi-estudio/>
 
-| Hoy | Tarjetas |
+| Hoy | Perfil y logros |
 | --- | --- |
-| ![Pantalla de inicio](capturas/hoy.png) | ![Tarjetas de estudio](capturas/tarjetas.png) |
+| ![Pantalla de inicio](capturas/hoy.png) | ![Perfil con nivel, XP y logros](capturas/perfil.png) |
+
+| Tarjetas | Apuntes |
+| --- | --- |
+| ![Tarjetas de estudio](capturas/tarjetas.png) | ![Apuntes por materia](capturas/apuntes.png) |
 
 App para estudiar desde el iPad: calendario de exámenes, plan de repaso, preguntas de multiple choice, tarjetas y apuntes. Funciona sin internet una vez instalada y guarda todo en el dispositivo.
 
@@ -16,15 +20,17 @@ Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exáme
 
 | Sección | Para qué sirve |
 | --- | --- |
-| **Hoy** | Saludo, racha de días estudiando, próximo examen con cuenta regresiva y las tareas de repaso del día. |
+| **Hoy** | Saludo, nivel y XP, racha de días estudiando, próximo examen con cuenta regresiva y las tareas de repaso del día. |
 | **Calendario** | Vista mensual con los exámenes marcados por materia. Al tocar un día se ve el detalle y se puede editar. |
 | **Materias** | Cada materia con sus preguntas, exámenes y apuntes, más el porcentaje de aciertos. |
 | **Apuntes** | Resúmenes por materia, con buscador y filtro. |
 | **Práctica** | Examen simulado (10 preguntas mezcladas), tarjetas de estudio y “repasar las que fallé”. |
+| **Perfil** | Nivel, XP, racha, estadísticas y 12 logros para desbloquear (estilo Knowunity). |
 | **Ajustes** | Nombre, backup, importar, exportar exámenes al Calendario del iPad y borrar datos. |
 
 Extras:
 
+- **Nivel, XP y logros**: ganás XP por cada respuesta (10 si está bien, 3 si no), tarjeta (6 / 2) y tarea del plan (8). Los niveles suben y hay 12 medallas para desbloquear, con aviso cuando cae una nueva.
 - **Plan de estudio automático**: reparte los temas de cada examen entre hoy y la víspera, y los muestra como checklist en “Hoy”.
 - **Tarjetas**: se arman solas con las preguntas cargadas (pregunta adelante, respuesta atrás).
 - **Avisos en el iPad**: se exportan los exámenes a la app Calendario (`.ics`) con recordatorios 2 días antes y la víspera a las 18:00.

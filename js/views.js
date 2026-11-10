@@ -1,11 +1,12 @@
 // Vistas de la app: devuelven HTML y la app se encarga de los eventos.
-import { esc, progressRing, hexToRgba } from './ui.js';
+import { esc, initials, progressRing, hexToRgba } from './ui.js';
 import {
   addDays, countdownLabel, diffDays, fmtLong, fmtMedium, fmtNumeric, fmtShort,
   monthLabel, monthMatrix, relativeLabel, todayISO, WEEKDAYS_SHORT,
 } from './dates.js';
 import {
-  examsSorted, masteryOf, notesOf, notesSorted, pastExams, questionsOf, streak, studyPlan,
+  achievements, examsSorted, levelInfo, masteryOf, notesOf, notesSorted, pastExams,
+  questionsOf, streak, studyPlan, studyStats,
   subjectById, subjectsSorted, tasksForDate, upcomingExams, wrongQuestions,
 } from './store.js';
 import { gradeMessage, cardSummary } from './quiz.js';
@@ -51,6 +52,7 @@ export function renderHoy(state, { today }) {
   const tasks = tasksForDate(today, state);
   const week = upcoming.filter((e) => diffDays(today, e.date) <= 7);
   const studied = streak(state, today);
+  const level = levelInfo(state.xp || 0);
 
   const heroSub = next
     ? `Lo que viene: <strong>${esc(nextSubject ? nextSubject.name : 'examen')}</strong> ${esc(relativeLabel(next.date, today))}.`
@@ -73,6 +75,16 @@ export function renderHoy(state, { today }) {
         ${heroActions}
       </div>
       <div class="hero-side">
+        <div class="hero-level">
+          <div class="level-ring">
+            ${progressRing(level.progress, '#ffffff', 58, 6)}
+            <span>Nv ${level.level}</span>
+          </div>
+          <div class="hero-level-copy">
+            <strong>${level.xp} XP</strong>
+            <small>${level.need - level.inLevel} XP para el nivel ${level.level + 1}</small>
+          </div>
+        </div>
         <div class="streak ${studied ? 'is-hot' : ''}">
           <span class="streak-flame" aria-hidden="true">${studied ? '🔥' : '🌱'}</span>
           <strong>${studied}</strong>
@@ -872,6 +884,87 @@ export function renderCardsSummary(session, state) {
         <button type="button" class="btn btn-plain" data-action="nav" data-view="practica">Volver a práctica</button>
       </div>
     </section>`;
+}
+
+/* =========================== PERFIL =========================== */
+
+export function renderPerfil(state, { today }) {
+  const name = (state.student || '').trim() || 'Estudiante';
+  const level = levelInfo(state.xp || 0);
+  const stats = studyStats(state);
+  const badges = achievements(state, today);
+  const unlocked = badges.filter((b) => b.done).length;
+  const subjects = subjectsSorted(state).filter((s) => questionsOf(s.id, state).length);
+  const xpToNext = level.need - level.inLevel;
+
+  return `
+    <section class="profile-head">
+      <div class="profile-avatar">
+        <span>${esc(initials(name))}</span>
+        <i class="level-pill">Nv ${level.level}</i>
+      </div>
+      <div class="profile-copy">
+        <p class="eyebrow">Perfil</p>
+        <h1>${esc(name)}</h1>
+        <p class="muted small">${stats.total} respuestas · ${stats.accuracy}% de aciertos · ${stats.days} ${stats.days === 1 ? 'día' : 'días'} de estudio</p>
+        <div class="xp-block">
+          <div class="xp-bar"><i style="width:${Math.round(level.progress * 100)}%"></i></div>
+          <span class="muted small">Nivel ${level.level} · ${level.inLevel}/${level.need} XP · faltan ${xpToNext} XP para el nivel ${level.level + 1}</span>
+        </div>
+      </div>
+      <div class="profile-actions">
+        <button type="button" class="btn btn-plain btn-small" data-action="nav" data-view="ajustes">Ajustes</button>
+      </div>
+    </section>
+
+    <div class="stat-grid">
+      <div class="stat-tile"><strong>${stats.days}</strong><span>días de estudio</span></div>
+      <div class="stat-tile"><strong>${stats.accuracy}%</strong><span>aciertos</span></div>
+      <div class="stat-tile"><strong>${stats.total}</strong><span>respuestas</span></div>
+      <div class="stat-tile"><strong>${stats.cards}</strong><span>tarjetas</span></div>
+      <div class="stat-tile"><strong>${stats.notes}</strong><span>apuntes</span></div>
+      <div class="stat-tile"><strong>${stats.exams}</strong><span>exámenes</span></div>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Logros</h2>
+        <span class="pill">${unlocked} / ${badges.length}</span>
+      </div>
+      <ul class="badge-grid">
+        ${badges.map((badge) => `
+          <li class="badge ${badge.done ? 'is-done' : ''}">
+            <span class="badge-emoji" aria-hidden="true">${badge.done ? badge.emoji : '🔒'}</span>
+            <div class="badge-copy">
+              <strong>${esc(badge.title)}</strong>
+              <span>${esc(badge.desc)}</span>
+            </div>
+          </li>`).join('')}
+      </ul>
+    </section>
+
+    ${subjects.length ? `
+      <section class="card">
+        <h2 class="card-title">Progreso por materia</h2>
+        <ul class="mastery-list">
+          ${subjects.map((subject) => {
+            const value = masteryOf(subject.id, state);
+            const pct = Math.round(value * 100);
+            const answered = questionsOf(subject.id, state).some((q) => q.stats);
+            return `
+              <li class="mastery-row" style="${subjectStyle(subject)}">
+                <span class="mastery-emoji">${esc(subject.emoji || '📘')}</span>
+                <div class="mastery-body">
+                  <div class="mastery-top"><span>${esc(subject.name)}</span><span class="muted small">${answered ? pct + '%' : 'sin practicar'}</span></div>
+                  <div class="bar"><i style="width:${answered ? pct : 0}%"></i></div>
+                </div>
+              </li>`;
+          }).join('')}
+        </ul>
+      </section>` : ''}
+
+    <p class="muted small center">Ganás XP por cada respuesta, tarjeta y tarea completada. La racha sube cuando estudiás cada día.</p>
+  `;
 }
 
 /* =========================== AJUSTES =========================== */

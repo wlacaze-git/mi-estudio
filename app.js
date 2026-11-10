@@ -1,7 +1,7 @@
 // Arranque, navegación y eventos de Mi Estudio.
 import {
   getState, load, replaceState, subscribe, subjectById,
-  update, uid, exportJSON,
+  update, uid, exportJSON, achievements, addXp, levelInfo,
 } from './js/store.js';
 import { addDays, buildICS, fmtLong, todayISO, diffDays } from './js/dates.js';
 import {
@@ -9,7 +9,7 @@ import {
   buildFlashcards, currentCard, answerCard, cardSummary,
 } from './js/quiz.js';
 import {
-  esc, toast, openModal, closeModal, isModalOpen, downloadFile,
+  esc, toast, openModal, closeModal, isModalOpen, downloadFile, initials,
 } from './js/ui.js';
 import * as views from './js/views.js';
 
@@ -50,6 +50,8 @@ function render() {
     html = views.renderQuiz(quizSession, current);
   } else if (route.view === 'tarjetas') {
     html = views.renderFlashcards(cardsSession, current);
+  } else if (route.view === 'perfil') {
+    html = views.renderPerfil(current, { today });
   } else if (route.view === 'ajustes') {
     html = views.renderAjustes(current);
   }
@@ -65,6 +67,28 @@ function render() {
   const name = (current.student || '').trim();
   brandSub.textContent = name ? `El espacio de ${name}` : 'Calendario y práctica';
   document.title = name ? `Mi Estudio · ${name}` : 'Mi Estudio';
+
+  const avatarInitials = document.getElementById('nav-avatar-initials');
+  const avatarLevel = document.getElementById('nav-avatar-level');
+  if (avatarInitials) avatarInitials.textContent = name ? initials(name) : '🎒';
+  if (avatarLevel) avatarLevel.textContent = levelInfo(current.xp || 0).level;
+
+  checkBadges(current, today);
+}
+
+/* Avisa cuando se desbloquea un logro nuevo (la primera vez no avisa). */
+let knownBadges = null;
+function checkBadges(state, today) {
+  const unlocked = achievements(state, today).filter((b) => b.done).map((b) => b.id);
+  if (knownBadges === null) {
+    knownBadges = new Set(unlocked);
+    return;
+  }
+  const fresh = unlocked.filter((id) => !knownBadges.has(id));
+  if (!fresh.length) return;
+  fresh.forEach((id) => knownBadges.add(id));
+  const badge = achievements(state, today).find((b) => b.id === fresh[0]);
+  if (badge) toast(`🏅 Logro desbloqueado: ${badge.title}`);
 }
 
 function go(next) {
@@ -141,6 +165,7 @@ function recordIfNeeded() {
       q.stats.lastSeen = new Date().toISOString();
     }
     if (!s.daysStudied.includes(attempt.date)) s.daysStudied.push(attempt.date);
+    s.xp = (s.xp || 0) + 15;
   });
 }
 
@@ -160,6 +185,7 @@ function recordCardsIfNeeded() {
     }
     const today = todayISO();
     if (!s.daysStudied.includes(today)) s.daysStudied.push(today);
+    s.xp = (s.xp || 0) + 10;
   });
 }
 
@@ -368,6 +394,7 @@ document.addEventListener('click', (event) => {
       const item = currentItem(quizSession);
       if (!item || item.ok !== null) return;
       answerCurrent(quizSession, Number(el.dataset.index));
+      addXp(item.ok ? 10 : 3);
       render();
       return;
     }
@@ -397,12 +424,18 @@ document.addEventListener('click', (event) => {
       cardsSession.flipped = !cardsSession.flipped;
       render();
       return;
-    case 'card-answer':
+    case 'card-answer': {
       if (!cardsSession) return;
-      answerCard(cardsSession, el.dataset.ok === '1');
+      const knew = el.dataset.ok === '1';
+      answerCard(cardsSession, knew);
+      update((s) => {
+        s.cardsSeen = (s.cardsSeen || 0) + 1;
+        s.xp = (s.xp || 0) + (knew ? 6 : 2);
+      });
       if (cardsSession.finished) recordCardsIfNeeded();
       render();
       return;
+    }
     case 'quit-cards':
       cardsSession = null;
       go({ view: 'practica' });
@@ -452,8 +485,12 @@ document.addEventListener('click', (event) => {
       const key = el.dataset.key;
       const done = el.dataset.done === '1';
       update((s) => {
-        if (done) delete s.planDone[key];
-        else s.planDone[key] = true;
+        if (done) {
+          delete s.planDone[key];
+        } else {
+          s.planDone[key] = true;
+          s.xp = (s.xp || 0) + 8;
+        }
       });
       return;
     }

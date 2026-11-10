@@ -17,6 +17,8 @@ function migrate(raw) {
   next.attempts = Array.isArray(raw.attempts) ? raw.attempts : [];
   next.planDone = raw.planDone && typeof raw.planDone === 'object' ? raw.planDone : {};
   next.daysStudied = Array.isArray(raw.daysStudied) ? raw.daysStudied : [];
+  next.xp = Number.isFinite(raw.xp) ? raw.xp : 0;
+  next.cardsSeen = Number(raw.cardsSeen) || 0;
   next.settings = { showDemo: true, ...(raw.settings || {}) };
   return next;
 }
@@ -207,4 +209,77 @@ export function recordAttempt(attempt) {
 
 export function exportJSON() {
   return JSON.stringify({ ...getState(), exportedAt: new Date().toISOString() }, null, 2);
+}
+
+/* --------------------------- Progreso / XP --------------------------- */
+
+export function addXp(amount) {
+  const value = Math.max(0, Math.round(Number(amount) || 0));
+  if (!value) return;
+  update((s) => { s.xp = (s.xp || 0) + value; });
+}
+
+/** Nivel actual y progreso dentro del nivel. */
+export function levelInfo(xp = getState().xp || 0) {
+  let level = 1;
+  let need = 80;
+  let base = 0;
+  while (xp >= base + need) {
+    base += need;
+    level += 1;
+    need = 80 + 60 * (level - 1);
+  }
+  return {
+    level,
+    xp,
+    base,
+    need,
+    inLevel: xp - base,
+    progress: Math.max(0, Math.min(1, (xp - base) / need)),
+  };
+}
+
+export function studyStats(s = getState()) {
+  let correct = 0;
+  let wrong = 0;
+  for (const q of s.questions) {
+    correct += q.stats?.correct || 0;
+    wrong += q.stats?.wrong || 0;
+  }
+  const total = correct + wrong;
+  return {
+    correct,
+    wrong,
+    total,
+    accuracy: total ? Math.round((correct / total) * 100) : 0,
+    cards: s.cardsSeen || 0,
+    notes: (s.notes || []).length,
+    days: (s.daysStudied || []).length,
+    exams: s.exams.length,
+    questions: s.questions.length,
+  };
+}
+
+/** Logros calculados a partir de los datos reales (no se guardan). */
+export function achievements(s = getState(), today = todayISO()) {
+  const stats = studyStats(s);
+  const tasks = tasksForDate(today, s);
+  const planDone = tasks.length > 0 && tasks.every((t) => t.done);
+  const bestMock = (s.attempts || []).some((a) => a.total >= 5 && a.percent === 100);
+  const streakNow = streak(s, today);
+
+  return [
+    { id: 'first-practice', emoji: '🎓', title: 'Primer paso', desc: 'Completá tu primera práctica.', done: (s.attempts || []).length >= 1 },
+    { id: 'ten-correct', emoji: '✅', title: 'Diez aciertos', desc: 'Acertá 10 preguntas.', done: stats.correct >= 10 },
+    { id: 'fifty-correct', emoji: '🏅', title: 'Cincuenta aciertos', desc: 'Acertá 50 preguntas.', done: stats.correct >= 50 },
+    { id: 'streak-3', emoji: '🔥', title: 'Racha de 3', desc: 'Estudiá 3 días seguidos.', done: streakNow >= 3 },
+    { id: 'streak-7', emoji: '⚡', title: 'Racha de 7', desc: 'Estudiá 7 días seguidos.', done: streakNow >= 7 },
+    { id: 'first-cards', emoji: '🃏', title: 'Primera tarjeta', desc: 'Repasá con tarjetas.', done: stats.cards >= 1 },
+    { id: 'cards-20', emoji: '🧠', title: 'Veinte tarjetas', desc: 'Repasá 20 tarjetas.', done: stats.cards >= 20 },
+    { id: 'notes-3', emoji: '✍️', title: 'Escritora', desc: 'Guardá 3 apuntes.', done: stats.notes >= 3 },
+    { id: 'mock-perfect', emoji: '🎯', title: 'Examen perfecto', desc: 'Sacá 100% en un examen simulado.', done: bestMock },
+    { id: 'organized', emoji: '📅', title: 'Organizada', desc: 'Cargá 3 exámenes en el calendario.', done: stats.exams >= 3 },
+    { id: 'all-tasks', emoji: '☑️', title: 'Todo al día', desc: 'Completá todas las tareas de hoy.', done: planDone },
+    { id: 'days-10', emoji: '🌱', title: 'Diez días', desc: 'Estudiá en 10 días distintos.', done: stats.days >= 10 },
+  ];
 }
