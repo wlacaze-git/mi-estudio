@@ -3,18 +3,18 @@
    ========================================================= */
 
 :root {
-  --bg: #f4f3fb;
-  --bg-tint: #eef0ff;
+  --bg: #fdf3f8;
+  --bg-tint: #ffeef6;
   --surface: #ffffff;
-  --surface-2: #faf9ff;
-  --line: #e7e4f2;
-  --line-strong: #d8d3ea;
-  --text: #1f1b38;
-  --text-soft: #4a4566;
-  --muted: #6f6a8a;
-  --primary: #5b4bf5;
-  --primary-dark: #4636d8;
-  --primary-soft: #eeeaff;
+  --surface-2: #fff8fb;
+  --line: #f2dee8;
+  --line-strong: #e7c8d8;
+  --text: #2b1622;
+  --text-soft: #573a48;
+  --muted: #8b6e7d;
+  --primary: #db2777;
+  --primary-dark: #9d174d;
+  --primary-soft: #fde7f2;
   --green: #12a06f;
   --green-soft: #e2f8ee;
   --red: #d9415c;
@@ -24,9 +24,9 @@
   --radius-lg: 22px;
   --radius-md: 16px;
   --radius-sm: 12px;
-  --shadow-sm: 0 2px 8px rgba(35, 28, 75, 0.05);
-  --shadow: 0 14px 36px rgba(35, 28, 75, 0.08);
-  --shadow-lg: 0 30px 70px rgba(28, 22, 65, 0.22);
+  --shadow-sm: 0 2px 8px rgba(74, 20, 45, 0.05);
+  --shadow: 0 14px 36px rgba(74, 20, 45, 0.08);
+  --shadow-lg: 0 30px 70px rgba(59, 12, 32, 0.22);
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -42,8 +42,8 @@ body {
   line-height: 1.5;
   color: var(--text);
   background:
-    radial-gradient(900px 500px at 8% -10%, #e7e2ff 0%, rgba(231, 226, 255, 0) 62%),
-    radial-gradient(800px 480px at 100% 0%, #e2f6ff 0%, rgba(226, 246, 255, 0) 58%),
+    radial-gradient(900px 500px at 8% -10%, #ffe1ef 0%, rgba(255, 225, 239, 0) 62%),
+    radial-gradient(800px 480px at 100% 0%, #fff0e4 0%, rgba(255, 240, 228, 0) 58%),
     var(--bg);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
@@ -59,7 +59,7 @@ a { color: inherit; text-decoration: none; }
 input, textarea, select, button { font-family: inherit; }
 
 :focus-visible {
-  outline: 3px solid rgba(91, 75, 245, 0.45);
+  outline: 3px solid rgba(236, 72, 153, 0.45);
   outline-offset: 2px;
   border-radius: 10px;
 }
@@ -111,7 +111,7 @@ input, textarea, select, button { font-family: inherit; }
   gap: 18px;
   padding: 14px 0 12px;
   margin-bottom: 6px;
-  background: linear-gradient(to bottom, rgba(244, 243, 251, 0.96) 65%, rgba(244, 243, 251, 0));
+  background: linear-gradient(to bottom, rgba(253, 243, 248, 0.96) 65%, rgba(253, 243, 248, 0));
   backdrop-filter: saturate(160%) blur(10px);
   -webkit-backdrop-filter: saturate(160%) blur(10px);
 }
@@ -125,8 +125,10 @@ input, textarea, select, button { font-family: inherit; }
   height: 44px;
   border-radius: 14px;
   color: #fff;
-  background: linear-gradient(150deg, #7d6bff, #4636d8);
-  box-shadow: 0 10px 20px rgba(91, 75, 245, 0.32);
+  background-image: url("icons/patron-rosa.png"), linear-gradient(150deg, #ee4f9d, #9d174d);
+  background-size: 76px, auto;
+  background-position: center;
+  box-shadow: 0 10px 20px rgba(219, 39, 119, 0.32);
   flex: none;
 }
 
@@ -161,7 +163,7 @@ input, textarea, select, button { font-family: inherit; }
   transition: background 0.15s, color 0.15s;
 }
 .nav button:hover { background: var(--primary-soft); color: var(--primary-dark); }
-.nav button.is-active { background: var(--primary); color: #fff; box-shadow: 0 6px 14px rgba(91, 75, 245, 0.28); }
+.nav button.is-active { background: var(--primary); color: #fff; box-shadow: 0 6px 14px rgba(236, 72, 153, 0.28); }
 .nav .nav-icon { padding: 9px 12px; display: grid; place-items: center; }
 
 .nav button.nav-avatar {
@@ -171,17 +173,19 @@ input, textarea, select, button { font-family: inherit; }
   padding: 0;
   margin-left: 2px;
   border-radius: 50%;
-  background: linear-gradient(150deg, #7d6bff, #4636d8);
+  background-image: url("icons/patron-rosa.png"), linear-gradient(150deg, #ee4f9d, #9d174d);
+  background-size: 66px, auto;
+  background-position: center;
   color: #fff;
   font-weight: 800;
   font-size: 0.86rem;
   display: grid;
   place-items: center;
-  box-shadow: 0 6px 14px rgba(91, 75, 245, 0.3);
+  box-shadow: 0 6px 14px rgba(236, 72, 153, 0.3);
   flex: none;
 }
-.nav button.nav-avatar:hover { background: linear-gradient(150deg, #8b7bff, #4d3de4); color: #fff; }
-.nav button.nav-avatar.is-active { background: linear-gradient(150deg, #7d6bff, #4636d8); box-shadow: 0 0 0 3px rgba(91, 75, 245, 0.22), 0 6px 14px rgba(91, 75, 245, 0.3); }
+.nav button.nav-avatar:hover { background-image: url("icons/patron-rosa.png"), linear-gradient(150deg, #f467ab, #831843); color: #fff; }
+.nav button.nav-avatar.is-active { background-image: url("icons/patron-rosa.png"), linear-gradient(150deg, #ee4f9d, #9d174d); box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.22), 0 6px 14px rgba(236, 72, 153, 0.3); }
 .nav-avatar i {
   position: absolute;
   right: 0;
@@ -227,14 +231,14 @@ input, textarea, select, button { font-family: inherit; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btn-primary {
-  background: linear-gradient(150deg, #6d5cf8, var(--primary-dark));
+  background: linear-gradient(150deg, #db2777, var(--primary-dark));
   color: #fff;
-  box-shadow: 0 10px 22px rgba(91, 75, 245, 0.26);
+  box-shadow: 0 10px 22px rgba(219, 39, 119, 0.26);
 }
-.btn-primary:hover:not(:disabled) { box-shadow: 0 14px 28px rgba(91, 75, 245, 0.34); }
+.btn-primary:hover:not(:disabled) { box-shadow: 0 14px 28px rgba(219, 39, 119, 0.34); }
 
 .btn-soft { background: var(--primary-soft); color: var(--primary-dark); }
-.btn-soft:hover:not(:disabled) { background: #e4deff; }
+.btn-soft:hover:not(:disabled) { background: #fbd5e8; }
 
 .btn-ghost {
   background: rgba(255, 255, 255, 0.16);
@@ -358,8 +362,8 @@ input, textarea, select, button { font-family: inherit; }
   padding: clamp(24px, 4vw, 38px);
   border-radius: var(--radius-xl);
   color: #fff;
-  background: linear-gradient(135deg, #6a58fb 0%, #4b3ad8 52%, #3a2bb5 100%);
-  box-shadow: 0 24px 50px rgba(64, 48, 190, 0.28);
+  background: linear-gradient(135deg, #db2777 0%, #be185d 52%, #9d174d 100%);
+  box-shadow: 0 24px 50px rgba(190, 24, 93, 0.28);
 }
 
 .hero::before,
@@ -387,7 +391,7 @@ input, textarea, select, button { font-family: inherit; }
 .hero-sub strong { color: #fff; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
 .hero-actions .btn-primary { background: #fff; color: var(--primary-dark); box-shadow: 0 12px 26px rgba(20, 12, 60, 0.24); }
-.hero-actions .btn-primary:hover { background: #f5f2ff; }
+.hero-actions .btn-primary:hover { background: #ffe9f4; }
 
 .wave { display: inline-block; animation: wave 2.4s ease-in-out infinite; transform-origin: 70% 80%; }
 @keyframes wave {
@@ -541,7 +545,7 @@ input, textarea, select, button { font-family: inherit; }
 }
 .mastery-body { flex: 1; min-width: 0; }
 .mastery-top { display: flex; justify-content: space-between; gap: 10px; font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; }
-.bar { height: 8px; border-radius: 999px; background: #efedf7; overflow: hidden; }
+.bar { height: 8px; border-radius: 999px; background: #f7e3ed; overflow: hidden; }
 .bar i { display: block; height: 100%; border-radius: 999px; background: var(--subject, var(--primary)); transition: width 0.5s ease; }
 
 /* --------------------------- Página --------------------------- */
@@ -598,7 +602,7 @@ input, textarea, select, button { font-family: inherit; }
 .cal-day:hover { background: #fff; border-color: var(--line-strong); }
 .cal-day:active { transform: scale(0.99); }
 .cal-day.is-out { opacity: 0.4; }
-.cal-day.is-today { border-color: var(--primary); background: #f6f4ff; }
+.cal-day.is-today { border-color: var(--primary); background: #fff0f7; }
 .cal-day.is-today .cal-num {
   background: var(--primary);
   color: #fff;
@@ -782,8 +786,8 @@ input, textarea, select, button { font-family: inherit; }
 .quiz-meta { display: flex; align-items: center; gap: 10px; }
 .quiz-counter { font-weight: 750; color: var(--muted); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
 
-.quiz-progress { height: 8px; border-radius: 999px; background: #ece9f8; overflow: hidden; margin-bottom: 18px; }
-.quiz-progress i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7d6bff, var(--primary)); transition: width 0.35s ease; }
+.quiz-progress { height: 8px; border-radius: 999px; background: #fbe4ef; overflow: hidden; margin-bottom: 18px; }
+.quiz-progress i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #ff7ebc, var(--primary)); transition: width 0.35s ease; }
 
 .quiz-card {
   background: var(--surface);
@@ -810,7 +814,7 @@ input, textarea, select, button { font-family: inherit; }
   font-size: 1.02rem;
   transition: border-color 0.15s, background 0.15s, transform 0.12s;
 }
-.option:hover:not(:disabled) { border-color: var(--primary); background: #faf9ff; }
+.option:hover:not(:disabled) { border-color: var(--primary); background: #fff8fb; }
 .option:active:not(:disabled) { transform: scale(0.995); }
 
 .opt-letter {
@@ -865,8 +869,8 @@ input, textarea, select, button { font-family: inherit; }
 .result-score { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin: 18px 0 10px; }
 .result-score strong { font-size: 3rem; line-height: 1; letter-spacing: -0.03em; }
 .result-score span { color: var(--muted); font-weight: 650; }
-.result-bar { height: 10px; max-width: 420px; margin: 0 auto 8px; background: #ece9f8; border-radius: 999px; overflow: hidden; }
-.result-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7d6bff, var(--primary)); transition: width 0.6s ease; }
+.result-bar { height: 10px; max-width: 420px; margin: 0 auto 8px; background: #fbe4ef; border-radius: 999px; overflow: hidden; }
+.result-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #ff7ebc, var(--primary)); transition: width 0.6s ease; }
 .result-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0; }
 
 .review-list { display: flex; flex-direction: column; gap: 10px; }
@@ -948,7 +952,7 @@ input, textarea, select, button { font-family: inherit; }
 .field input:focus, .field select:focus, .field textarea:focus, .inline-form input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(91, 75, 245, 0.14);
+  box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.14);
 }
 .field select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236f6a8a' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
@@ -964,7 +968,7 @@ input, textarea, select, button { font-family: inherit; }
 .option-editor { display: flex; flex-direction: column; gap: 8px; }
 .option-row { display: flex; align-items: center; gap: 8px; }
 .option-row .opt-input { flex: 1; padding: 11px 14px; border-radius: 12px; border: 1.5px solid var(--line-strong); font-size: 0.97rem; }
-.option-row .opt-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(91, 75, 245, 0.14); }
+.option-row .opt-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.14); }
 .option-radio { position: relative; flex: none; }
 .option-radio input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
 .option-radio span {
@@ -980,7 +984,7 @@ input, textarea, select, button { font-family: inherit; }
   transition: all 0.15s;
 }
 .option-radio input:checked + span { background: var(--green); border-color: var(--green); color: #fff; }
-.option-radio input:focus-visible + span { outline: 3px solid rgba(91, 75, 245, 0.45); outline-offset: 2px; }
+.option-radio input:focus-visible + span { outline: 3px solid rgba(236, 72, 153, 0.45); outline-offset: 2px; }
 
 .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
 .swatch { position: relative; cursor: pointer; }
@@ -1005,7 +1009,7 @@ input, textarea, select, button { font-family: inherit; }
   align-items: center;
   justify-content: center;
   padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
-  background: rgba(28, 22, 60, 0.42);
+  background: rgba(45, 12, 30, 0.42);
   backdrop-filter: blur(4px);
   animation: fade 0.18s ease;
 }
@@ -1085,12 +1089,12 @@ input, textarea, select, button { font-family: inherit; }
   max-width: min(90vw, 460px);
   padding: 12px 20px;
   border-radius: 999px;
-  background: #241d45;
+  background: #3b1226;
   color: #fff;
   font-size: 0.9rem;
   font-weight: 600;
   text-align: center;
-  box-shadow: 0 18px 40px rgba(20, 14, 50, 0.3);
+  box-shadow: 0 18px 40px rgba(59, 12, 32, 0.3);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s, transform 0.2s;
@@ -1124,7 +1128,7 @@ input, textarea, select, button { font-family: inherit; }
   padding: clamp(20px, 3vw, 28px);
   border-radius: var(--radius-xl);
   border: 1px solid var(--line);
-  background: linear-gradient(130deg, #efeaff 0%, #ffffff 65%);
+  background: linear-gradient(130deg, #ffe9f4 0%, #ffffff 65%);
   box-shadow: var(--shadow-sm);
 }
 
@@ -1135,12 +1139,14 @@ input, textarea, select, button { font-family: inherit; }
   width: 88px;
   height: 88px;
   border-radius: 26px;
-  background: linear-gradient(150deg, #7d6bff, #4636d8);
+  background-image: url("icons/patron-rosa.png"), linear-gradient(150deg, #ee4f9d, #9d174d);
+  background-size: 96px, auto;
+  background-position: center;
   color: #fff;
   font-size: 1.9rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  box-shadow: 0 14px 28px rgba(91, 75, 245, 0.28);
+  box-shadow: 0 14px 28px rgba(236, 72, 153, 0.28);
   flex: none;
 }
 .level-pill {
@@ -1163,8 +1169,8 @@ input, textarea, select, button { font-family: inherit; }
 .profile-copy > p { margin-top: 4px; }
 
 .xp-block { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; max-width: 430px; }
-.xp-bar { height: 10px; border-radius: 999px; background: #ece9f8; overflow: hidden; }
-.xp-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7d6bff, var(--primary)); transition: width 0.5s ease; }
+.xp-bar { height: 10px; border-radius: 999px; background: #fbe4ef; overflow: hidden; }
+.xp-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #ff7ebc, var(--primary)); transition: width 0.5s ease; }
 
 .profile-actions { display: flex; gap: 8px; align-self: flex-start; }
 
@@ -1230,7 +1236,7 @@ input, textarea, select, button { font-family: inherit; }
   border: 1px solid var(--line);
   background: var(--surface-2);
 }
-.profile-row.is-active { background: linear-gradient(135deg, #ffffff, #f3f0ff); border-color: #d9d0ff; }
+.profile-row.is-active { background: linear-gradient(135deg, #ffffff, #fff0f7); border-color: #f7c6dd; }
 .profile-mini {
   display: grid;
   place-items: center;
@@ -1243,7 +1249,7 @@ input, textarea, select, button { font-family: inherit; }
   font-size: 0.9rem;
   flex: none;
 }
-.profile-row.is-active .profile-mini { background: linear-gradient(150deg, #7d6bff, #4636d8); color: #fff; }
+.profile-row.is-active .profile-mini { background-image: url("icons/patron-rosa.png"), linear-gradient(150deg, #ee4f9d, #9d174d); background-size: 42px, auto; color: #fff; }
 .profile-row-copy { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
 .profile-row-copy strong { font-size: 0.98rem; }
 .profile-row-copy small { font-size: 0.78rem; color: var(--muted); }
@@ -1279,7 +1285,7 @@ input, textarea, select, button { font-family: inherit; }
 .note-search:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(91, 75, 245, 0.14);
+  box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.14);
   background: #fff;
 }
 
@@ -1483,7 +1489,7 @@ input, textarea, select, button { font-family: inherit; }
   max-width: 460px;
 }
 .flashcard-explanation { color: var(--text-soft); font-size: 0.92rem; max-width: 520px; line-height: 1.5; }
-.flashcard:focus-visible { outline: 3px solid rgba(91, 75, 245, 0.45); outline-offset: 4px; border-radius: var(--radius-xl); }
+.flashcard:focus-visible { outline: 3px solid rgba(236, 72, 153, 0.45); outline-offset: 4px; border-radius: var(--radius-xl); }
 
 .card-answer { display: flex; gap: 12px; justify-content: center; margin-top: 22px; flex-wrap: wrap; }
 .card-answer .btn { min-width: 180px; }
@@ -1537,3 +1543,7 @@ input, textarea, select, button { font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
+
+
+
+

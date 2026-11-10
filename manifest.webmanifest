@@ -8,8 +8,8 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#f4f3fb",
-  "theme_color": "#5b4bf5",
+  "background_color": "#fdf3f8",
+  "theme_color": "#db2777",
   "lang": "es",
   "dir": "ltr",
   "categories": ["education", "productivity"],
@@ -34,3 +34,5 @@
     }
   ]
 }
+
+

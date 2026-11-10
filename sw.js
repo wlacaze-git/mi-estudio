@@ -1,5 +1,5 @@
-/* Service worker: deja la app disponible sin internet. */
-const CACHE = 'mi-estudio-v5';
+﻿/* Service worker: deja la app disponible sin internet. */
+const CACHE = 'mi-estudio-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -61,3 +61,4 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+

@@ -56,7 +56,7 @@ export function isModalOpen() {
 }
 
 export function hexToRgba(hex, alpha = 1) {
-  const clean = String(hex || '#5b4bf5').replace('#', '');
+  const clean = String(hex || '#ec4899').replace('#', '');
   const full = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean;
   const num = parseInt(full, 16);
   const r = (num >> 16) & 255;
@@ -72,7 +72,7 @@ export function initials(name) {
 }
 
 /** Anillo de progreso en SVG (0..1). */
-export function progressRing(value, color = '#5b4bf5', size = 64, stroke = 7) {
+export function progressRing(value, color = '#ec4899', size = 64, stroke = 7) {
   const pct = Math.max(0, Math.min(1, Number(value) || 0));
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -100,3 +100,4 @@ export function downloadFile(filename, content, type = 'application/json') {
 export function prettyDateForFile(iso = new Date().toISOString().slice(0, 10)) {
   return iso;
 }
+

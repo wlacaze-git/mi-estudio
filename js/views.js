@@ -17,7 +17,7 @@ const ICON_EDIT = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" s
 const ICON_TRASH = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5M14 11v5"></path></svg>';
 
 function subjectStyle(subject) {
-  const color = subject ? subject.color : '#5b4bf5';
+  const color = subject ? subject.color : '#ec4899';
   return `--subject:${color};--subject-soft:${hexToRgba(color, 0.12)};--subject-line:${hexToRgba(color, 0.28)}`;
 }
 
@@ -1148,7 +1148,7 @@ export function renderExamForm(state, { exam = null, date = '' } = {}) {
 
 export function renderSubjectForm(state, { subject = null } = {}) {
   const editing = Boolean(subject);
-  const palette = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#0ea5e9', '#ec4899', '#8b5cf6', '#14b8a6'];
+  const palette = ['#ec4899', '#f59e0b', '#10b981', '#0ea5e9', '#f97316', '#14b8a6', '#e11d48', '#84cc16'];
   const value = subject || { name: '', emoji: '📘', color: palette[0] };
   return `
     <div class="modal-head">
@@ -1278,3 +1278,5 @@ export function renderConfirm({ title, text, confirmLabel = 'Borrar', action, id
       <button type="button" class="btn ${danger ? 'btn-danger' : 'btn-primary'}" data-action="${esc(action)}" data-id="${esc(id)}">${esc(confirmLabel)}</button>
     </div>`;
 }
+
+

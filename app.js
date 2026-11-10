@@ -740,7 +740,7 @@ document.addEventListener('submit', (event) => {
   if (kind === 'subject') {
     const name = String(data.get('name') || '').trim();
     const emoji = String(data.get('emoji') || '').trim() || '📘';
-    const color = String(data.get('color') || '#5b4bf5');
+    const color = String(data.get('color') || '#ec4899');
     if (!name) { toast('Poné un nombre', 'warn'); return; }
     const id = form.dataset.id;
     update((s) => {
@@ -1006,3 +1006,4 @@ if ('serviceWorker' in navigator) {
 window.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && route.view === 'hoy') render();
 });
+

@@ -8,7 +8,7 @@ export function seedState() {
   const today = todayISO();
 
   const subjects = [
-    { id: 'mat', name: 'Matemática', emoji: '🧮', color: '#6366f1' },
+    { id: 'mat', name: 'Matemática', emoji: '🧮', color: '#f43f5e' },
     { id: 'his', name: 'Historia', emoji: '🏛️', color: '#f59e0b' },
     { id: 'bio', name: 'Biología', emoji: '🧬', color: '#10b981' },
   ];
@@ -181,3 +181,4 @@ export function seedState() {
     settings: { showDemo: true },
   };
 }
+
