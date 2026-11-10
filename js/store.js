@@ -67,6 +67,12 @@ export function profileNameOf(id) {
   return profile ? profile.name : 'Estudiante';
 }
 
+/** Datos guardados de una persona (para limpiar sus fotos, por ejemplo). */
+export function profileStateOf(id) {
+  const raw = readJSON(STATE_KEY(id), null);
+  return raw ? migrate(raw) : null;
+}
+
 export function switchProfile(id) {
   const registry = ensureRegistry();
   if (!registry.profiles.some((p) => p.id === id)) return null;
@@ -140,7 +146,10 @@ function migrate(raw) {
   next.subjects = Array.isArray(raw.subjects) ? raw.subjects : base.subjects;
   next.exams = Array.isArray(raw.exams) ? raw.exams : [];
   next.questions = Array.isArray(raw.questions) ? raw.questions : [];
-  next.notes = Array.isArray(raw.notes) ? raw.notes : [];
+  next.notes = (Array.isArray(raw.notes) ? raw.notes : []).map((note) => ({
+    ...note,
+    images: Array.isArray(note.images) ? note.images : [],
+  }));
   next.attempts = Array.isArray(raw.attempts) ? raw.attempts : [];
   next.planDone = raw.planDone && typeof raw.planDone === 'object' ? raw.planDone : {};
   next.daysStudied = Array.isArray(raw.daysStudied) ? raw.daysStudied : [];

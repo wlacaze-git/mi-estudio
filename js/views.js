@@ -703,14 +703,18 @@ function renderSubjectNotes(state, subject) {
 
 function noteRow(note, state, subject) {
   const sub = subject || subjectById(note.subjectId, state);
+  const photos = (note.images || []).length;
   return `
     <li class="note-card" style="${subjectStyle(sub)}" data-action="view-note" data-id="${esc(note.id)}" data-search="${esc((note.title + ' ' + note.body + ' ' + (sub ? sub.name : '')).toLowerCase())}" role="button" tabindex="0">
       <div class="note-card-top">
         ${subjectChip(sub)}
-        <span class="muted small">${esc(noteDate(note.updatedAt))}</span>
+        <span class="note-card-meta">
+          ${photos ? `<span class="photo-count">📷 ${photos}</span>` : ''}
+          <span class="muted small">${esc(noteDate(note.updatedAt))}</span>
+        </span>
       </div>
       <h3>${esc(note.title)}</h3>
-      <p class="note-preview">${esc(notePreview(note.body))}</p>
+      ${note.body ? `<p class="note-preview">${esc(notePreview(note.body))}</p>` : ''}
     </li>`;
 }
 
@@ -756,6 +760,7 @@ export function renderApuntes(state, { subjectId = null } = {}) {
 
 export function renderNoteView(state, note) {
   const subject = subjectById(note.subjectId, state);
+  const photos = note.images || [];
   return `
     <div class="modal-head">
       <div>
@@ -765,7 +770,14 @@ export function renderNoteView(state, note) {
       <button type="button" class="icon-btn" data-action="close-modal" aria-label="Cerrar">✕</button>
     </div>
     <p class="muted small">Actualizado el ${esc(noteDate(note.updatedAt))}</p>
-    <div class="note-body">${esc(note.body)}</div>
+    ${note.body ? `<div class="note-body">${esc(note.body)}</div>` : ''}
+    ${photos.length ? `
+      <div class="note-photos">
+        ${photos.map((photo) => `
+          <button type="button" class="note-photo" data-action="open-photo" data-image-id="${esc(photo.id)}" aria-label="Ver foto completa">
+            <img data-image-id="${esc(photo.id)}" alt="Foto del apunte" loading="lazy">
+          </button>`).join('')}
+      </div>` : ''}
     <div class="modal-foot">
       <button type="button" class="btn btn-danger btn-small" data-action="delete-note" data-id="${esc(note.id)}">Borrar</button>
       <div class="foot-right">
@@ -777,7 +789,8 @@ export function renderNoteView(state, note) {
 
 export function renderNoteForm(state, { note = null, subjectId = '' } = {}) {
   const editing = Boolean(note);
-  const value = note || { subjectId: subjectId || state.subjects[0]?.id || '', title: '', body: '' };
+  const value = note || { subjectId: subjectId || state.subjects[0]?.id || '', title: '', body: '', images: [] };
+  const photos = value.images || [];
   return `
     <div class="modal-head">
       <div>
@@ -801,9 +814,24 @@ export function renderNoteForm(state, { note = null, subjectId = '' } = {}) {
       </div>
       <label class="field">
         <span>Apunte</span>
-        <textarea name="body" rows="10" placeholder="Escribí o pegá acá tu resumen…" required>${esc(value.body)}</textarea>
-        <small class="hint">Podés usar saltos de línea y viñetas con “-”.</small>
+        <textarea name="body" rows="8" placeholder="Escribí o pegá acá tu resumen…">${esc(value.body)}</textarea>
+        <small class="hint">Podés dejarlo vacío si el apunte es solo una foto.</small>
       </label>
+      <div class="field">
+        <span>Fotos</span>
+        <div class="photo-grid" data-photo-grid>
+          ${photos.map((photo) => `
+            <figure class="photo-thumb" data-id="${esc(photo.id)}">
+              <img data-image-id="${esc(photo.id)}" alt="Foto del apunte">
+              <button type="button" class="photo-remove" data-action="remove-note-photo" data-id="${esc(photo.id)}" aria-label="Quitar foto">✕</button>
+            </figure>`).join('')}
+        </div>
+        <label class="photo-add">
+          <input type="file" accept="image/*" multiple data-role="note-photo" hidden>
+          <span class="btn btn-soft btn-small">📷 Agregar foto</span>
+        </label>
+        <small class="hint">Podés sacar una foto en el momento o elegir de la galería. Se achican solas para ocupar poco lugar.</small>
+      </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-plain" data-action="close-modal">Cancelar</button>
         <button type="submit" class="btn btn-primary">${editing ? 'Guardar cambios' : 'Guardar apunte'}</button>

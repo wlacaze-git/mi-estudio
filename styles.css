@@ -1318,8 +1318,95 @@ input, textarea, select, button { font-family: inherit; }
 }
 .note-card[hidden] { display: none; }
 .note-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.note-card-meta { display: inline-flex; align-items: center; gap: 8px; }
+.photo-count {
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
 .note-card h3 { font-size: 1.05rem; }
 .note-preview { color: var(--muted); font-size: 0.9rem; margin-top: 4px; line-height: 1.45; }
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.photo-grid:empty { display: none; }
+.photo-thumb {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(20, 14, 40, 0.62);
+  color: #fff;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.photo-processing {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 1px dashed var(--line-strong);
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: center;
+  padding: 6px;
+}
+.photo-add { display: inline-flex; }
+.photo-add input { display: none; }
+.photo-add .btn { cursor: pointer; }
+
+.note-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.note-photo {
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface-2);
+  cursor: zoom-in;
+  aspect-ratio: 4 / 3;
+}
+.note-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 10, 35, 0.92);
+  cursor: zoom-out;
+  animation: fade 0.15s ease;
+}
+.lightbox img { max-width: 100%; max-height: 100%; border-radius: 12px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5); }
 
 .note-body {
   white-space: pre-wrap;

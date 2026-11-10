@@ -42,6 +42,9 @@ export function closeModal() {
   if (!modalRoot) return;
   modalRoot.innerHTML = '';
   document.body.classList.remove('modal-open');
+  const closed = document.createEvent('CustomEvent');
+  closed.initCustomEvent('modal:closed', false, false, null);
+  document.dispatchEvent(closed);
   if (lastFocused && typeof lastFocused.focus === 'function') {
     try { lastFocused.focus({ preventScroll: true }); } catch { /* ignore */ }
   }

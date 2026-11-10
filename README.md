@@ -10,6 +10,10 @@
 | --- | --- |
 | ![Tarjetas de estudio](capturas/tarjetas.png) | ![Apuntes por materia](capturas/apuntes.png) |
 
+| Apunte con foto |
+| --- |
+| ![Apunte con una foto del pizarrón](capturas/apunte-foto.png) |
+
 App para estudiar desde el iPad: calendario de exámenes, plan de repaso, preguntas de multiple choice, tarjetas y apuntes. Funciona sin internet una vez instalada y guarda todo en el dispositivo.
 
 Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exámenes y preguntas; la app le avisa qué le toca estudiar cada día y le toma examen.
@@ -23,7 +27,7 @@ Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exáme
 | **Hoy** | Saludo, nivel y XP, racha de días estudiando, próximo examen con cuenta regresiva y las tareas de repaso del día. |
 | **Calendario** | Vista mensual con los exámenes marcados por materia. Al tocar un día se ve el detalle y se puede editar. |
 | **Materias** | Cada materia con sus preguntas, exámenes y apuntes, más el porcentaje de aciertos. |
-| **Apuntes** | Resúmenes por materia, con buscador y filtro. |
+| **Apuntes** | Resúmenes por materia, con buscador, filtro y **fotos** (del pizarrón, la carpeta o el libro). |
 | **Práctica** | Examen simulado (10 preguntas mezcladas), tarjetas de estudio y “repasar las que fallé”. |
 | **Perfil** | Nivel, XP, racha, estadísticas, 12 logros y las personas que usan la app (estilo Knowunity). |
 | **Ajustes** | Nombre, backup, importar, exportar exámenes al Calendario del iPad y borrar datos. |
@@ -31,6 +35,7 @@ Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exáme
 Extras:
 
 - **Nivel, XP y logros**: ganás XP por cada respuesta (10 si está bien, 3 si no), tarjeta (6 / 2) y tarea del plan (8). Los niveles suben y hay 12 medallas para desbloquear, con aviso cuando cae una nueva.
+- **Fotos en los apuntes**: desde el editor tocás “Agregar foto” y podés sacarla en el momento o elegir de la galería. Se achican solas (máx. 1400 px) para ocupar poco, se guardan en el iPad y se ven grandes dentro del apunte (tocás para ampliar).
 - **Plan de estudio automático**: reparte los temas de cada examen entre hoy y la víspera, y los muestra como checklist en “Hoy”.
 - **Tarjetas**: se arman solas con las preguntas cargadas (pregunta adelante, respuesta atrás).
 - **Avisos en el iPad**: se exportan los exámenes a la app Calendario (`.ics`) con recordatorios 2 días antes y la víspera a las 18:00.
@@ -130,8 +135,8 @@ Todo queda en el iPad, en almacenamiento separado por persona dentro del navegad
 
 ## Datos, backup y privacidad
 
-- Todo se guarda en el **dispositivo** (localStorage), separado por persona. No hay cuentas, servidores ni analytics: nada sale del iPad.
-- **Ajustes → Descargar backup (.json)** guarda un archivo con **la persona activa**. **Importar backup** lo restaura en la persona activa (sirve para pasar de un dispositivo a otro).
+- Todo se guarda en el **dispositivo** (localStorage para los datos y IndexedDB para las fotos), separado por persona. No hay cuentas, servidores ni analytics: nada sale del iPad.
+- **Ajustes → Descargar backup (.json)** guarda un archivo con **la persona activa**, incluidas sus fotos. **Importar backup** lo restaura en la persona activa (sirve para pasar de un dispositivo a otro).
 - Si borrás datos del navegador o desinstalás la app, se pierde lo que no esté respaldado.
 
 ---
@@ -148,6 +153,7 @@ js/seed.js            datos de ejemplo
 js/quiz.js            motor de preguntas, tarjetas y resultados
 js/views.js           HTML de cada pantalla
 js/ui.js              helpers de interfaz (modales, toasts, íconos)
+js/images.js          fotos de los apuntes (compresión + IndexedDB)
 manifest.webmanifest  configuración PWA
 sw.js                 service worker (funcionamiento offline)
 icons/                íconos de la app

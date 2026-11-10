@@ -1,8 +1,8 @@
 // Arranque, navegación y eventos de Mi Estudio.
 import {
   getState, load, replaceState, subscribe, subjectById,
-  update, uid, exportJSON, achievements, addXp, levelInfo,
-  activeProfile, activeProfileId, createProfile, deleteProfile, renameProfile, switchProfile,
+  update, uid, achievements, addXp, levelInfo,
+  activeProfile, activeProfileId, createProfile, deleteProfile, profileStateOf, renameProfile, switchProfile,
 } from './js/store.js';
 import { addDays, buildICS, fmtLong, todayISO, diffDays } from './js/dates.js';
 import {
@@ -12,6 +12,10 @@ import {
 import {
   esc, toast, openModal, closeModal, isModalOpen, downloadFile, initials,
 } from './js/ui.js';
+import {
+  blobToDataURL, dataURLToBlob, deleteImage, deleteImages, getImageBlob,
+  hydrate, imageUrl, putImage, saveFile,
+} from './js/images.js';
 import * as views from './js/views.js';
 
 const state = load();
@@ -26,6 +30,7 @@ let noteFilter = '';
 let calMonth = { year: new Date().getFullYear(), month: new Date().getMonth() };
 let modal = null;
 let recordedSessions = new Set();
+let noteDraft = null;
 
 /* ----------------------------- Render ----------------------------- */
 
@@ -58,6 +63,7 @@ function render() {
   }
 
   viewEl.innerHTML = html;
+  hydrate(viewEl);
   document.body.dataset.view = route.view;
 
   const activeView = route.view === 'subject' ? 'materias' : route.view === 'tarjetas' ? 'practica' : route.view;
@@ -138,6 +144,45 @@ function showModal(kind, payload = {}) {
   }
 
   openModal(html, { label });
+  if (kind === 'note') {
+    startNoteDraft(payload.note);
+    hydrate(document.getElementById('modal-root'));
+  }
+  if (kind === 'note-view') hydrate(document.getElementById('modal-root'));
+}
+
+/* --------------------------- Fotos de apuntes --------------------------- */
+
+function startNoteDraft(note) {
+  const ids = ((note && note.images) || []).map((photo) => photo.id);
+  noteDraft = {
+    ids,
+    originalIds: new Set(ids),
+    newIds: new Set(),
+    removedIds: new Set(),
+  };
+}
+
+/** Si se cierra el editor sin guardar, borra las fotos recién agregadas. */
+function discardNoteDraft() {
+  if (!noteDraft) return;
+  const pending = [...noteDraft.newIds];
+  noteDraft = null;
+  if (pending.length) deleteImages(pending);
+}
+
+function openLightbox(url) {
+  if (!url) return;
+  document.getElementById('lightbox')?.remove();
+  const box = document.createElement('div');
+  box.id = 'lightbox';
+  box.className = 'lightbox';
+  const img = document.createElement('img');
+  img.src = url;
+  img.alt = 'Foto del apunte';
+  box.appendChild(img);
+  box.addEventListener('click', () => box.remove());
+  document.body.appendChild(box);
 }
 
 /* ----------------------------- Acciones ----------------------------- */
@@ -234,9 +279,21 @@ function exportCalendar() {
   toast('Archivo .ics descargado. Abrilo para sumarlo al Calendario del iPad.');
 }
 
-function exportBackup() {
-  downloadFile(`mi-estudio-backup-${todayISO()}.json`, exportJSON());
-  toast('Backup descargado');
+async function exportBackup() {
+  const current = getState();
+  const images = {};
+  for (const note of current.notes || []) {
+    for (const photo of note.images || []) {
+      try {
+        const blob = await getImageBlob(photo.id);
+        if (blob) images[photo.id] = await blobToDataURL(blob);
+      } catch { /* si falta una foto, seguimos */ }
+    }
+  }
+  const payload = { ...current, images, exportedAt: new Date().toISOString() };
+  downloadFile(`mi-estudio-backup-${todayISO()}.json`, JSON.stringify(payload, null, 2));
+  const count = Object.keys(images).length;
+  toast(count ? `Backup descargado (con ${count} foto${count === 1 ? '' : 's'})` : 'Backup descargado');
 }
 
 async function importBackup(file) {
@@ -246,8 +303,15 @@ async function importBackup(file) {
     if (!data || !Array.isArray(data.subjects) || !Array.isArray(data.questions)) {
       throw new Error('Formato inválido');
     }
+    const imageMap = data.images && typeof data.images === 'object' ? data.images : {};
+    delete data.images;
+    for (const [id, dataUrl] of Object.entries(imageMap)) {
+      try {
+        await putImage(id, await dataURLToBlob(dataUrl));
+      } catch { /* una foto rota no frena la importación */ }
+    }
     replaceState(data);
-    go({ view: 'hoy' });
+    go({ view: 'apuntes' });
     toast('Backup importado');
   } catch (err) {
     console.error(err);
@@ -464,6 +528,22 @@ document.addEventListener('click', (event) => {
       if (note) { closeModal(); showModal('note', { note }); }
       return;
     }
+    case 'remove-note-photo': {
+      const id = el.dataset.id;
+      if (!noteDraft) return;
+      noteDraft.ids = noteDraft.ids.filter((x) => x !== id);
+      if (noteDraft.newIds.has(id)) {
+        noteDraft.newIds.delete(id);
+        deleteImage(id);
+      } else {
+        noteDraft.removedIds.add(id);
+      }
+      el.closest('.photo-thumb')?.remove();
+      return;
+    }
+    case 'open-photo':
+      imageUrl(el.dataset.imageId).then(openLightbox).catch(() => {});
+      return;
     case 'delete-note': {
       const note = getState().notes.find((n) => n.id === el.dataset.id);
       if (!note) return;
@@ -476,11 +556,16 @@ document.addEventListener('click', (event) => {
       });
       return;
     }
-    case 'confirm-delete-note':
-      update((s) => { s.notes = s.notes.filter((n) => n.id !== el.dataset.id); });
+    case 'confirm-delete-note': {
+      const id = el.dataset.id;
+      const note = getState().notes.find((n) => n.id === id);
+      const photos = ((note && note.images) || []).map((photo) => photo.id);
+      update((s) => { s.notes = s.notes.filter((n) => n.id !== id); });
       closeModal();
+      if (photos.length) deleteImages(photos);
       toast('Apunte borrado');
       return;
+    }
     case 'filter-notes':
       noteFilter = el.dataset.subject || '';
       render();
@@ -509,8 +594,11 @@ document.addEventListener('click', (event) => {
       });
       return;
     case 'confirm-delete-profile': {
+      const target = profileStateOf(el.dataset.id);
+      const photos = ((target && target.notes) || []).flatMap((note) => (note.images || []).map((photo) => photo.id));
       const removed = deleteProfile(el.dataset.id);
       closeModal();
+      if (photos.length) deleteImages(photos);
       if (removed) {
         knownBadges = null;
         toast('Persona borrada');
@@ -569,21 +657,28 @@ document.addEventListener('click', (event) => {
         action: 'confirm-reset',
       });
       return;
-    case 'confirm-reset':
+    case 'confirm-reset': {
+      const photos = (getState().notes || []).flatMap((note) => (note.images || []).map((photo) => photo.id));
       update((s) => {
         s.student = '';
         s.subjects = [];
         s.exams = [];
         s.questions = [];
+        s.notes = [];
         s.attempts = [];
         s.planDone = {};
         s.daysStudied = [];
+        s.xp = 0;
+        s.cardsSeen = 0;
       });
       closeModal();
+      if (photos.length) deleteImages(photos);
       quizSession = null;
+      cardsSession = null;
       go({ view: 'hoy' });
       toast('Listo, empezamos de cero');
       return;
+    }
     case 'confirm-delete-exam':
       update((s) => { s.exams = s.exams.filter((e) => e.id !== el.dataset.id); });
       closeModal();
@@ -705,18 +800,25 @@ document.addEventListener('submit', (event) => {
     const title = String(data.get('title') || '').trim();
     const body = String(data.get('body') || '').trim();
     const subjectId = String(data.get('subjectId') || '');
-    if (!title || !body || !subjectId) { toast('Completá materia, título y apunte', 'warn'); return; }
+    const images = noteDraft ? [...noteDraft.ids] : [];
+    const removedPhotos = noteDraft ? [...noteDraft.removedIds] : [];
+    if (!title || !subjectId) { toast('Completá materia y título', 'warn'); return; }
+    if (!body && !images.length) { toast('Escribí el apunte o agregá una foto', 'warn'); return; }
+
+    const payloadImages = images.map((imageId) => ({ id: imageId }));
     const id = form.dataset.id;
     const now = new Date().toISOString();
     update((s) => {
       if (id) {
         const note = s.notes.find((n) => n.id === id);
-        if (note) Object.assign(note, { subjectId, title, body, updatedAt: now, demo: false });
+        if (note) Object.assign(note, { subjectId, title, body, images: payloadImages, updatedAt: now, demo: false });
       } else {
-        s.notes.push({ id: uid('note'), subjectId, title, body, createdAt: now, updatedAt: now });
+        s.notes.push({ id: uid('note'), subjectId, title, body, images: payloadImages, createdAt: now, updatedAt: now });
       }
     });
+    noteDraft = null;
     closeModal();
+    if (removedPhotos.length) deleteImages(removedPhotos);
     toast(id ? 'Apunte actualizado' : 'Apunte guardado');
     return;
   }
@@ -760,6 +862,65 @@ document.addEventListener('change', (event) => {
     input.value = '';
   }
 });
+
+// Fotos de un apunte: se achican, se guardan y se muestran al instante.
+document.addEventListener('change', async (event) => {
+  const input = event.target.closest('input[data-role="note-photo"]');
+  if (!input) return;
+  const files = [...(input.files || [])];
+  input.value = '';
+  if (!files.length || !noteDraft) return;
+  const grid = document.querySelector('[data-photo-grid]');
+  if (!grid) return;
+
+  let processing = grid.querySelector('.photo-processing');
+  if (!processing) {
+    processing = document.createElement('div');
+    processing.className = 'photo-processing';
+    processing.textContent = 'Procesando…';
+    grid.appendChild(processing);
+  }
+
+  for (const file of files) {
+    if (!file.type || !file.type.startsWith('image/')) continue;
+    try {
+      const saved = await saveFile(file);
+      if (!noteDraft) {
+        deleteImage(saved.id);
+        continue;
+      }
+      noteDraft.ids.push(saved.id);
+      noteDraft.newIds.add(saved.id);
+
+      const figure = document.createElement('figure');
+      figure.className = 'photo-thumb';
+      figure.dataset.id = saved.id;
+
+      const img = document.createElement('img');
+      img.dataset.imageId = saved.id;
+      img.dataset.loaded = '1';
+      img.src = saved.url;
+      img.alt = 'Foto del apunte';
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'photo-remove';
+      remove.dataset.action = 'remove-note-photo';
+      remove.dataset.id = saved.id;
+      remove.setAttribute('aria-label', 'Quitar foto');
+      remove.textContent = '✕';
+
+      figure.append(img, remove);
+      grid.insertBefore(figure, processing);
+    } catch (err) {
+      console.error(err);
+      toast('No pude agregar esa foto', 'warn');
+    }
+  }
+  processing.remove();
+});
+
+document.addEventListener('modal:closed', () => discardNoteDraft());
 
 // Buscar dentro de los apuntes sin volver a dibujar (para no perder el foco).
 document.addEventListener('input', (event) => {
