@@ -150,6 +150,7 @@ function migrate(raw) {
     ...note,
     images: Array.isArray(note.images) ? note.images : [],
   }));
+  next.schedule = Array.isArray(raw.schedule) ? raw.schedule : [];
   next.attempts = Array.isArray(raw.attempts) ? raw.attempts : [];
   next.planDone = raw.planDone && typeof raw.planDone === 'object' ? raw.planDone : {};
   next.daysStudied = Array.isArray(raw.daysStudied) ? raw.daysStudied : [];
@@ -251,6 +252,25 @@ export function notesSorted(s = getState()) {
 
 export function notesOf(subjectId, s = getState()) {
   return notesSorted(s).filter((n) => n.subjectId === subjectId);
+}
+
+/* --------------------------- Horario --------------------------- */
+
+/** Lunes=1 … Domingo=0 (igual que Date.getDay()). */
+export function classesOfDay(day, s = getState()) {
+  return scheduleSorted(s).filter((c) => Number(c.day) === Number(day));
+}
+
+export function scheduleSorted(s = getState()) {
+  return [...(s.schedule || [])].sort((a, b) => {
+    if (Number(a.day) !== Number(b.day)) return Number(a.day) - Number(b.day);
+    return String(a.start).localeCompare(String(b.start));
+  });
+}
+
+export function classesToday(today = todayISO(), s = getState()) {
+  const day = new Date(`${today}T12:00:00`).getDay();
+  return classesOfDay(day, s);
 }
 
 /** 0..1 según aciertos históricos de la materia. */

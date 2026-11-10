@@ -16,6 +16,10 @@
 | --- |
 | ![Apunte con una foto del pizarrón](capturas/apunte-foto.png) |
 
+| Horario de la semana |
+| --- |
+| ![Horario con materias, horas y profesores](capturas/horario.png) |
+
 App para estudiar desde el iPad, con identidad **rosa y animal print**: calendario de exámenes, plan de repaso, preguntas de multiple choice, tarjetas y apuntes. Funciona sin internet una vez instalada y guarda todo en el dispositivo.
 
 Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exámenes y preguntas; la app le avisa qué le toca estudiar cada día y le toma examen.
@@ -26,7 +30,8 @@ Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exáme
 
 | Sección | Para qué sirve |
 | --- | --- |
-| **Hoy** | Saludo, nivel y XP, racha de días estudiando, próximo examen con cuenta regresiva y las tareas de repaso del día. |
+| **Hoy** | Saludo, nivel y XP, racha de días estudiando, próximo examen con cuenta regresiva, **clases del día** y las tareas de repaso. |
+| **Horario** | La semana completa: materia, día, hora y **profesor/a** de cada clase. |
 | **Calendario** | Vista mensual con los exámenes marcados por materia. Al tocar un día se ve el detalle y se puede editar. |
 | **Materias** | Cada materia con sus preguntas, exámenes y apuntes, más el porcentaje de aciertos. |
 | **Apuntes** | Resúmenes por materia, con buscador, filtro y **fotos** (del pizarrón, la carpeta o el libro). |
@@ -36,6 +41,7 @@ Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exáme
 
 Extras:
 
+- **Horario siempre a mano**: la semana completa con materia, hora y profe; en “Hoy” ves las clases del día y se resalta la que está en curso.
 - **Nivel, XP y logros**: ganás XP por cada respuesta (10 si está bien, 3 si no), tarjeta (6 / 2) y tarea del plan (8). Los niveles suben y hay 12 medallas para desbloquear, con aviso cuando cae una nueva.
 - **Fotos en los apuntes**: desde el editor tocás “Agregar foto” y podés sacarla en el momento o elegir de la galería. Se achican solas (máx. 1400 px) para ocupar poco, se guardan en el iPad y se ven grandes dentro del apunte (tocás para ampliar).
 - **Plan de estudio automático**: reparte los temas de cada examen entre hoy y la víspera, y los muestra como checklist en “Hoy”.
@@ -101,6 +107,7 @@ Cada vez que quieras actualizar la app, volvés a subir la carpeta (o hacés pus
 ## Cómo se carga el contenido
 
 - **Examen**: Calendario → *+ Agregar examen*. Materia, título, fecha y temas (uno por línea). Con los temas se arma el plan.
+- **Clase del horario**: Horario → *+ Agregar clase* (o el **+** del día). Materia, día, desde/hasta, profesor/a y aula. Se puede tocar cualquier clase para editarla o borrarla.
 - **Materia**: Materias → *+ Agregar materia* (nombre, emoji y color).
 - **Pregunta**: Materias → entrá a la materia → *+ Nueva pregunta*. Escribís la pregunta, 4 opciones (podés agregar hasta 6), marcás la correcta y una explicación.
 - **Apunte**: Apuntes → *+ Nuevo apunte*. Título y texto libre.

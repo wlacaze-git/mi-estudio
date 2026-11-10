@@ -50,6 +50,8 @@ function render() {
     html = subject ? views.renderSubjectDetail(current, subject) : views.renderMaterias(current);
   } else if (route.view === 'practica') {
     html = views.renderPractica(current, { today });
+  } else if (route.view === 'horario') {
+    html = views.renderHorario(current, { today });
   } else if (route.view === 'apuntes') {
     html = views.renderApuntes(current, { subjectId: noteFilter || null });
   } else if (route.view === 'quiz') {
@@ -138,6 +140,9 @@ function showModal(kind, payload = {}) {
   } else if (kind === 'profile') {
     html = views.renderProfileForm();
     label = 'Agregar persona';
+  } else if (kind === 'clase') {
+    html = views.renderClaseForm(current, payload);
+    label = payload.clase ? 'Editar clase' : 'Agregar clase';
   } else if (kind === 'onboarding') {
     html = views.renderOnboarding();
     label = 'Bienvenida';
@@ -570,6 +575,33 @@ document.addEventListener('click', (event) => {
       noteFilter = el.dataset.subject || '';
       render();
       return;
+    case 'add-class':
+      closeModal();
+      showModal('clase', { day: el.dataset.day ? Number(el.dataset.day) : null });
+      return;
+    case 'edit-class': {
+      const clase = (getState().schedule || []).find((c) => c.id === el.dataset.id);
+      if (clase) { closeModal(); showModal('clase', { clase }); }
+      return;
+    }
+    case 'delete-class': {
+      const clase = (getState().schedule || []).find((c) => c.id === el.dataset.id);
+      if (!clase) return;
+      const subject = subjectById(clase.subjectId);
+      showModal('confirm', {
+        title: '¿Borrar esta clase?',
+        text: `${subject ? subject.name : 'Materia'} · ${views.dayName(clase.day)} de ${clase.start} a ${clase.end}${clase.teacher ? ' (' + clase.teacher + ')' : ''}`,
+        confirmLabel: 'Borrar clase',
+        action: 'confirm-delete-class',
+        id: clase.id,
+      });
+      return;
+    }
+    case 'confirm-delete-class':
+      update((s) => { s.schedule = (s.schedule || []).filter((c) => c.id !== el.dataset.id); });
+      closeModal();
+      toast('Clase borrada');
+      return;
     case 'add-profile':
       showModal('profile');
       return;
@@ -642,6 +674,7 @@ document.addEventListener('click', (event) => {
         s.exams = s.exams.filter((e) => !e.demo);
         s.questions = s.questions.filter((q) => !q.demo);
         s.notes = (s.notes || []).filter((n) => !n.demo);
+        s.schedule = (s.schedule || []).filter((c) => !c.demo);
         const used = new Set(s.exams.map((e) => e.subjectId).concat(s.questions.map((q) => q.subjectId)));
         s.subjects = s.subjects.filter((sub) => !(['mat', 'his', 'bio'].includes(sub.id) && !used.has(sub.id)));
         s.settings.showDemo = false;
@@ -820,6 +853,30 @@ document.addEventListener('submit', (event) => {
     closeModal();
     if (removedPhotos.length) deleteImages(removedPhotos);
     toast(id ? 'Apunte actualizado' : 'Apunte guardado');
+    return;
+  }
+
+  if (kind === 'clase') {
+    const subjectId = String(data.get('subjectId') || '');
+    const day = Number(data.get('day'));
+    const start = String(data.get('start') || '');
+    const end = String(data.get('end') || '');
+    const teacher = String(data.get('teacher') || '').trim();
+    const room = String(data.get('room') || '').trim();
+    if (!subjectId || !start || !end) { toast('Completá materia y horario', 'warn'); return; }
+    if (end <= start) { toast('La hora de fin tiene que ser posterior al inicio', 'warn'); return; }
+    const id = form.dataset.id;
+    update((s) => {
+      if (id) {
+        const clase = (s.schedule || []).find((c) => c.id === id);
+        if (clase) Object.assign(clase, { subjectId, day, start, end, teacher, room, demo: false });
+      } else {
+        s.schedule = s.schedule || [];
+        s.schedule.push({ id: uid('c'), subjectId, day, start, end, teacher, room });
+      }
+    });
+    closeModal();
+    toast(id ? 'Clase actualizada' : 'Clase agregada');
     return;
   }
 

@@ -5,9 +5,10 @@ import {
   monthLabel, monthMatrix, relativeLabel, todayISO, WEEKDAYS_SHORT,
 } from './dates.js';
 import {
-  achievements, activeProfileId, examsSorted, levelInfo, listProfiles, masteryOf, notesOf,
-  notesSorted, pastExams, questionsOf, streak, studyPlan, studyStats,
-  subjectById, subjectsSorted, tasksForDate, upcomingExams, wrongQuestions,
+  achievements, activeProfileId, classesOfDay, classesToday, examsSorted, levelInfo,
+  listProfiles, masteryOf, notesOf, notesSorted, pastExams, questionsOf, scheduleSorted,
+  streak, studyPlan, studyStats, subjectById, subjectsSorted, tasksForDate, upcomingExams,
+  wrongQuestions,
 } from './store.js';
 import { gradeMessage, cardSummary } from './quiz.js';
 
@@ -15,6 +16,7 @@ const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 const ICON_EDIT = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>';
 const ICON_TRASH = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5M14 11v5"></path></svg>';
+const ICON_PERSON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.2"></circle><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"></path></svg>';
 
 function subjectStyle(subject) {
   const color = subject ? subject.color : '#ec4899';
@@ -197,6 +199,7 @@ export function renderHoy(state, { today }) {
   return `
     ${hero}
     <div class="grid-2">${nextPanel}${tasksPanel}</div>
+    ${renderTodayClasses(state, { today })}
     ${weekPanel}
     ${progressPanel}
   `;
@@ -363,6 +366,179 @@ export function renderDaySheet(state, date) {
     <div class="modal-foot">
       <button type="button" class="btn btn-primary btn-block" data-action="add-exam" data-date="${esc(date)}">+ Agregar examen este día</button>
     </div>`;
+}
+
+/* ========================== HORARIO ========================== */
+
+export const DAYS = [
+  { n: 1, name: 'Lunes', short: 'Lun' },
+  { n: 2, name: 'Martes', short: 'Mar' },
+  { n: 3, name: 'Miércoles', short: 'Mié' },
+  { n: 4, name: 'Jueves', short: 'Jue' },
+  { n: 5, name: 'Viernes', short: 'Vie' },
+  { n: 6, name: 'Sábado', short: 'Sáb' },
+  { n: 0, name: 'Domingo', short: 'Dom' },
+];
+
+export function dayName(number) {
+  const day = DAYS.find((d) => d.n === Number(number));
+  return day ? day.name : 'Lunes';
+}
+
+function toMinutes(hhmm) {
+  const [h, m] = String(hhmm || '0:0').split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+function classCard(clase, state, todayNumber, nowMinutes) {
+  const subject = subjectById(clase.subjectId, state);
+  const isNow = Number(clase.day) === todayNumber
+    && nowMinutes >= toMinutes(clase.start)
+    && nowMinutes < toMinutes(clase.end);
+  return `
+    <div class="class-card ${isNow ? 'is-now' : ''}" style="${subjectStyle(subject)}" data-action="edit-class" data-id="${esc(clase.id)}" role="button" tabindex="0">
+      <span class="class-time">${esc(clase.start)}–${esc(clase.end)}${isNow ? '<em>ahora</em>' : ''}</span>
+      <span class="class-subject">${esc(subject ? subject.emoji || '📘' : '📘')} ${esc(subject ? subject.name : 'Materia')}</span>
+      ${clase.teacher ? `<span class="class-teacher">${ICON_PERSON} ${esc(clase.teacher)}</span>` : ''}
+      ${clase.room ? `<span class="class-room">${esc(clase.room)}</span>` : ''}
+    </div>`;
+}
+
+export function renderHorario(state, { today }) {
+  const all = scheduleSorted(state);
+  const todayNumber = new Date(`${today}T12:00:00`).getDay();
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const used = new Set(all.map((c) => Number(c.day)));
+  const days = DAYS.filter((d) => (d.n >= 1 && d.n <= 5) || used.has(d.n));
+
+  return `
+    <section class="page-head">
+      <div>
+        <p class="eyebrow">Horario</p>
+        <h1 class="page-title">Tu semana</h1>
+        <p class="muted small">Tocá una clase para cambiar la materia, el profe o el horario.</p>
+      </div>
+      <button type="button" class="btn btn-primary" data-action="add-class">+ Agregar clase</button>
+    </section>
+
+    ${all.length ? `
+      <div class="schedule-scroll">
+        <div class="schedule-board">
+          ${days.map((day) => {
+            const classes = classesOfDay(day.n, state);
+            const isToday = day.n === todayNumber;
+            return `
+              <section class="day-col ${isToday ? 'is-today' : ''}">
+                <header class="day-head">
+                  <strong>${esc(day.name)}</strong>
+                  <span>${classes.length ? `${classes.length} ${classes.length === 1 ? 'clase' : 'clases'}` : 'libre'}</span>
+                </header>
+                <div class="day-classes">
+                  ${classes.map((clase) => classCard(clase, state, todayNumber, nowMinutes)).join('')}
+                  <button type="button" class="add-class-mini" data-action="add-class" data-day="${day.n}" aria-label="Agregar clase el ${esc(day.name)}">+</button>
+                </div>
+              </section>`;
+          }).join('')}
+        </div>
+      </div>` : `<section class="card">${emptyState({
+            emoji: '🕒',
+            title: 'Todavía no cargaste el horario',
+            text: 'Agregá cada clase con la materia, el día, la hora y el nombre del profe. Después lo ves todo junto en la semana.',
+            actionLabel: 'Cargar la primera clase',
+            actionAttrs: 'data-action="add-class"',
+          })}</section>`}
+  `;
+}
+
+export function renderTodayClasses(state, { today }) {
+  if (!scheduleSorted(state).length) return '';
+  const classes = classesToday(today, state);
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  return `
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Hoy en el cole</h2>
+        <button type="button" class="btn btn-plain btn-small" data-action="nav" data-view="horario">Ver horario</button>
+      </div>
+      ${classes.length
+        ? `<ul class="today-classes">${classes.map((clase) => {
+            const subject = subjectById(clase.subjectId, state);
+            const isNow = nowMinutes >= toMinutes(clase.start) && nowMinutes < toMinutes(clase.end);
+            return `
+              <li class="today-class ${isNow ? 'is-now' : ''}" style="${subjectStyle(subject)}">
+                <span class="today-class-time">${esc(clase.start)}<i>${esc(clase.end)}</i></span>
+                <div class="today-class-body">
+                  <span class="today-class-subject">${esc(subject ? subject.emoji || '📘' : '📘')} ${esc(subject ? subject.name : 'Materia')}</span>
+                  ${clase.teacher ? `<span class="today-class-meta">${esc(clase.teacher)}${clase.room ? ' · ' + esc(clase.room) : ''}</span>` : ''}
+                </div>
+                ${isNow ? '<span class="pill">Ahora</span>' : ''}
+              </li>`;
+          }).join('')}</ul>`
+        : '<p class="muted small">Hoy no hay clases cargadas. Podés descansar o adelantar estudio.</p>'}
+    </section>`;
+}
+
+export function renderClaseForm(state, { clase = null, day = null } = {}) {
+  const editing = Boolean(clase);
+  const value = clase || {
+    subjectId: state.subjects[0]?.id || '',
+    day: day != null ? Number(day) : 1,
+    start: '08:00',
+    end: '09:20',
+    teacher: '',
+    room: '',
+  };
+  return `
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow">${editing ? 'Editar' : 'Nueva'}</p>
+        <h2>${editing ? 'Editar clase' : 'Agregar clase'}</h2>
+      </div>
+      <button type="button" class="icon-btn" data-action="close-modal" aria-label="Cerrar">✕</button>
+    </div>
+    <form class="form" data-form="clase" data-id="${esc(clase ? clase.id : '')}">
+      <div class="field-row">
+        <label class="field">
+          <span>Materia</span>
+          <select name="subjectId" required>
+            ${state.subjects.map((s) => `<option value="${esc(s.id)}" ${s.id === value.subjectId ? 'selected' : ''}>${esc(s.emoji || '📘')} ${esc(s.name)}</option>`).join('')}
+          </select>
+        </label>
+        <label class="field">
+          <span>Día</span>
+          <select name="day" required>
+            ${DAYS.map((d) => `<option value="${d.n}" ${Number(value.day) === d.n ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}
+          </select>
+        </label>
+      </div>
+      <div class="field-row">
+        <label class="field">
+          <span>Desde</span>
+          <input type="time" name="start" value="${esc(value.start)}" required>
+        </label>
+        <label class="field">
+          <span>Hasta</span>
+          <input type="time" name="end" value="${esc(value.end)}" required>
+        </label>
+      </div>
+      <label class="field">
+        <span>Profesor/a</span>
+        <input type="text" name="teacher" value="${esc(value.teacher || '')}" placeholder="Ej.: Laura Gómez" maxlength="60">
+      </label>
+      <label class="field">
+        <span>Aula (opcional)</span>
+        <input type="text" name="room" value="${esc(value.room || '')}" placeholder="Ej.: Aula 3" maxlength="30">
+      </label>
+      <div class="modal-foot">
+        ${editing ? `<button type="button" class="btn btn-danger btn-small" data-action="delete-class" data-id="${esc(clase.id)}">Borrar clase</button>` : '<span></span>'}
+        <div class="foot-right">
+          <button type="button" class="btn btn-plain" data-action="close-modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">${editing ? 'Guardar cambios' : 'Agregar clase'}</button>
+        </div>
+      </div>
+    </form>`;
 }
 
 /* ========================== MATERIAS ========================== */
