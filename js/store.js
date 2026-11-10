@@ -398,6 +398,17 @@ export function levelInfo(xp = getState().xp || 0) {
   };
 }
 
+/** XP acumulada necesaria para llegar a un nivel. */
+export function xpForLevel(level) {
+  let total = 0;
+  let need = 80;
+  for (let current = 1; current < Number(level); current++) {
+    total += need;
+    need = 80 + 60 * current;
+  }
+  return total;
+}
+
 export function studyStats(s = getState()) {
   let correct = 0;
   let wrong = 0;

@@ -8,9 +8,10 @@ import {
   achievements, activeProfileId, classesOfDay, classesToday, examsSorted, levelInfo,
   listProfiles, masteryOf, notesOf, notesSorted, pastExams, questionsOf, scheduleSorted,
   streak, studyPlan, studyStats, subjectById, subjectsSorted, tasksForDate, upcomingExams,
-  wrongQuestions,
+  wrongQuestions, xpForLevel,
 } from './store.js';
 import { gradeMessage, cardSummary } from './quiz.js';
+import { ANIMALS, animalAvatar, animalForLevel, nextAnimalForLevel } from './animals.js';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
@@ -1102,16 +1103,20 @@ export function renderPerfil(state, { today }) {
   const xpToNext = level.need - level.inLevel;
   const profiles = listProfiles();
   const activeId = activeProfileId();
+  const animal = animalForLevel(level.level);
+  const nextAnimal = nextAnimalForLevel(level.level);
+  const xpToAnimal = nextAnimal ? Math.max(0, xpForLevel(nextAnimal.level) - (state.xp || 0)) : 0;
 
   return `
     <section class="profile-head">
       <div class="profile-avatar">
-        <span>${esc(initials(name))}</span>
+        ${animalAvatar(animal)}
         <i class="level-pill">Nv ${level.level}</i>
       </div>
       <div class="profile-copy">
         <p class="eyebrow">Perfil</p>
         <h1>${esc(name)}</h1>
+        <p class="animal-line">Tu animal es <strong>${esc(animal.name)}</strong> · Nivel ${level.level}</p>
         <p class="muted small">${stats.total} respuestas · ${stats.accuracy}% de aciertos · ${stats.days} ${stats.days === 1 ? 'día' : 'días'} de estudio</p>
         <div class="xp-block">
           <div class="xp-bar"><i style="width:${Math.round(level.progress * 100)}%"></i></div>
@@ -1131,6 +1136,29 @@ export function renderPerfil(state, { today }) {
       <div class="stat-tile"><strong>${stats.notes}</strong><span>apuntes</span></div>
       <div class="stat-tile"><strong>${stats.exams}</strong><span>exámenes</span></div>
     </div>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Tu animal</h2>
+        <span class="pill">Nivel ${level.level}</span>
+      </div>
+      <p class="muted small">Cuanto mejor te va, mejor es tu animal. El guepardo es el mejor de todos.</p>
+      <div class="animal-ladder">
+        ${ANIMALS.map((item) => {
+          const unlocked = level.level >= item.level;
+          const current = item.id === animal.id;
+          return `
+            <div class="animal-step ${unlocked ? 'is-unlocked' : ''} ${current ? 'is-current' : ''}">
+              <span class="animal-circle">${item.svg}</span>
+              <span class="animal-name">${esc(item.name)}</span>
+              <span class="animal-level">${current ? 'Ahora' : 'Nv ' + item.level}</span>
+            </div>`;
+        }).join('')}
+      </div>
+      ${nextAnimal
+        ? `<p class="muted small">El próximo es <strong>${esc(nextAnimal.name)}</strong>: te faltan ${xpToAnimal} XP (nivel ${nextAnimal.level}).</p>`
+        : '<p class="muted small">¡Llegaste al guepardo! El animal más rápido de todos. 🐆</p>'}
+    </section>
 
     <section class="card">
       <div class="card-head">

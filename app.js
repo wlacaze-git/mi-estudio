@@ -10,8 +10,9 @@ import {
   buildFlashcards, currentCard, answerCard, cardSummary,
 } from './js/quiz.js';
 import {
-  esc, toast, openModal, closeModal, isModalOpen, downloadFile, initials,
+  esc, toast, openModal, closeModal, isModalOpen, downloadFile,
 } from './js/ui.js';
+import { animalAvatar, animalForLevel } from './js/animals.js';
 import {
   blobToDataURL, dataURLToBlob, deleteImage, deleteImages, getImageBlob,
   hydrate, imageUrl, putImage, saveFile,
@@ -79,10 +80,26 @@ function render() {
 
   const avatarInitials = document.getElementById('nav-avatar-initials');
   const avatarLevel = document.getElementById('nav-avatar-level');
-  if (avatarInitials) avatarInitials.textContent = name ? initials(name) : '🎒';
-  if (avatarLevel) avatarLevel.textContent = levelInfo(current.xp || 0).level;
+  const currentLevel = levelInfo(current.xp || 0).level;
+  if (avatarInitials) avatarInitials.innerHTML = animalAvatar(animalForLevel(currentLevel));
+  if (avatarLevel) avatarLevel.textContent = currentLevel;
+  checkAnimal(currentLevel);
 
   checkBadges(current, today);
+}
+
+// Avisa cuando el nivel le cambia el animal.
+let lastAnimalId = null;
+function checkAnimal(level) {
+  const animal = animalForLevel(level);
+  if (lastAnimalId === null) {
+    lastAnimalId = animal.id;
+    return;
+  }
+  if (animal.id !== lastAnimalId) {
+    lastAnimalId = animal.id;
+    toast(`¡Nuevo animal: ${animal.name}!`);
+  }
 }
 
 /* Avisa cuando se desbloquea un logro nuevo (la primera vez no avisa). */
@@ -611,6 +628,7 @@ document.addEventListener('click', (event) => {
       quizSession = null;
       cardsSession = null;
       knownBadges = null;
+      lastAnimalId = null;
       closeModal();
       go({ view: 'hoy' });
       toast(`Ahora usa la app ${profile.name}`);
@@ -633,6 +651,7 @@ document.addEventListener('click', (event) => {
       if (photos.length) deleteImages(photos);
       if (removed) {
         knownBadges = null;
+        lastAnimalId = null;
         toast('Persona borrada');
         render();
       } else {
@@ -708,6 +727,8 @@ document.addEventListener('click', (event) => {
       if (photos.length) deleteImages(photos);
       quizSession = null;
       cardsSession = null;
+      knownBadges = null;
+      lastAnimalId = null;
       go({ view: 'hoy' });
       toast('Listo, empezamos de cero');
       return;
@@ -896,6 +917,7 @@ document.addEventListener('submit', (event) => {
     quizSession = null;
     cardsSession = null;
     knownBadges = null;
+    lastAnimalId = null;
     closeModal();
     go({ view: 'hoy' });
     toast(`¡Hola, ${name}!`);

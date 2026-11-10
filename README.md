@@ -36,11 +36,12 @@ Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exáme
 | **Materias** | Cada materia con sus preguntas, exámenes y apuntes, más el porcentaje de aciertos. |
 | **Apuntes** | Resúmenes por materia, con buscador, filtro y **fotos** (del pizarrón, la carpeta o el libro). |
 | **Práctica** | Examen simulado (10 preguntas mezcladas), tarjetas de estudio y “repasar las que fallé”. |
-| **Perfil** | Nivel, XP, racha, estadísticas, 12 logros y las personas que usan la app (estilo Knowunity). |
+| **Perfil** | Nivel, XP, racha, estadísticas, 12 logros, **tu animal** (que mejora con el nivel) y las personas que usan la app. |
 | **Ajustes** | Nombre, backup, importar, exportar exámenes al Calendario del iPad y borrar datos. |
 
 Extras:
 
+- **Avatar animal**: el avatar es un animal rosa que va mejorando con el nivel: caracol → gato → perro → conejo → zorro → jirafa → león → **guepardo** (el mejor). Cambia solo al subir de nivel y en el perfil se ve la escalera completa.
 - **Horario siempre a mano**: la semana completa con materia, hora y profe; en “Hoy” ves las clases del día y se resalta la que está en curso.
 - **Nivel, XP y logros**: ganás XP por cada respuesta (10 si está bien, 3 si no), tarjeta (6 / 2) y tarea del plan (8). Los niveles suben y hay 12 medallas para desbloquear, con aviso cuando cae una nueva.
 - **Fotos en los apuntes**: desde el editor tocás “Agregar foto” y podés sacarla en el momento o elegir de la galería. Se achican solas (máx. 1400 px) para ocupar poco, se guardan en el iPad y se ven grandes dentro del apunte (tocás para ampliar).
@@ -127,6 +128,25 @@ Una web app no puede programar notificaciones locales como una app nativa. La so
 Además, al abrir la app siempre ves la cuenta regresiva y “Para hoy”.
 
 Si más adelante querés notificaciones push reales, hace falta un servidor (y en iOS solo funcionan con la app instalada). Es el paso siguiente si les sirve.
+
+---
+
+## Tu animal
+
+El avatar cambia según el nivel: cuanto mejor te va, mejor es el animal. Todos en rosa, y el guepardo es el premio mayor.
+
+![Escalera de animales: caracol, gato, perro, conejo, zorro, jirafa, león y guepardo](capturas/animales.png)
+
+| Nivel | Animal |
+| --- | --- |
+| 1 | Caracol |
+| 2 | Gato |
+| 3 | Perro |
+| 4 | Conejo |
+| 5 | Zorro |
+| 6 | Jirafa |
+| 7 | León |
+| 8 en adelante | Guepardo |
 
 ---
 
