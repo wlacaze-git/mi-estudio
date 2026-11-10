@@ -2,10 +2,10 @@
 // El orden va del más lento al más veloz; el guepardo (cheetah) es el mejor.
 
 const C = {
-  cream: '#ffd1e6',
+  cream: '#f472b6',
   berry: '#9d174d',
-  pink: '#f472b6',
-  rose: '#f9a8d4',
+  pink: '#ec4899',
+  rose: '#fbcfe8',
   deep: '#831843',
   white: '#ffffff',
 };

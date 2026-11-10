@@ -20,7 +20,7 @@
 | --- |
 | ![Horario con materias, horas y profesores](capturas/horario.png) |
 
-App para estudiar desde el iPad, con identidad **rosa y animal print**: calendario de exámenes, plan de repaso, preguntas de multiple choice, tarjetas y apuntes. Funciona sin internet una vez instalada y guarda todo en el dispositivo.
+App para estudiar desde el iPad, en **rosa claro con animal print** (manchas rosadas sobre blanco, como el ícono): calendario de exámenes, plan de repaso, preguntas de multiple choice, tarjetas y apuntes. Funciona sin internet una vez instalada y guarda todo en el dispositivo.
 
 Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exámenes y preguntas; la app le avisa qué le toca estudiar cada día y le toma examen.
 

@@ -80,7 +80,7 @@ export function renderHoy(state, { today }) {
       <div class="hero-side">
         <div class="hero-level">
           <div class="level-ring">
-            ${progressRing(level.progress, '#ffffff', 58, 6)}
+            ${progressRing(level.progress, '#9d174d', 58, 6)}
             <span>Nv ${level.level}</span>
           </div>
           <div class="hero-level-copy">
