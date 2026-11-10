@@ -94,7 +94,7 @@ export function createProfile(name) {
   writeRegistry(registry);
 
   const base = seedState();
-  state = {
+  state = migrate({
     ...base,
     student: clean,
     subjects: [],
@@ -107,7 +107,7 @@ export function createProfile(name) {
     xp: 0,
     cardsSeen: 0,
     settings: { showDemo: false, onboarded: true },
-  };
+  });
   save();
   notify();
   return id;
@@ -150,6 +150,8 @@ function migrate(raw) {
     date: plan.date || '',
     topics: Array.isArray(plan.topics) ? plan.topics : [],
     photos: Array.isArray(plan.photos) ? plan.photos : [],
+    grade: Number.isFinite(plan.grade) ? plan.grade : null,
+    gradeAsked: Boolean(plan.gradeAsked),
   }));
   next.questions = Array.isArray(raw.questions) ? raw.questions : [];
   next.notes = (Array.isArray(raw.notes) ? raw.notes : []).map((note) => ({
@@ -158,6 +160,9 @@ function migrate(raw) {
   }));
   next.schedule = Array.isArray(raw.schedule) ? raw.schedule : [];
   next.schedulePhotoId = typeof raw.schedulePhotoId === 'string' ? raw.schedulePhotoId : null;
+  next.perla = {
+    messages: Array.isArray(raw.perla && raw.perla.messages) ? raw.perla.messages.slice(-80) : [],
+  };
   next.attempts = Array.isArray(raw.attempts) ? raw.attempts : [];
   next.planDone = raw.planDone && typeof raw.planDone === 'object' ? raw.planDone : {};
   next.daysStudied = Array.isArray(raw.daysStudied) ? raw.daysStudied : [];
@@ -171,7 +176,7 @@ export function load() {
   try {
     const registry = ensureRegistry();
     const raw = readJSON(STATE_KEY(registry.active), null);
-    state = raw ? migrate(raw) : seedState();
+    state = raw ? migrate(raw) : migrate(seedState());
     if (!raw) save();
   } catch (err) {
     console.warn('No se pudo leer el guardado, arranco con datos de ejemplo.', err);
@@ -281,6 +286,17 @@ export function scheduleSorted(s = getState()) {
     if (Number(a.day) !== Number(b.day)) return Number(a.day) - Number(b.day);
     return String(a.start).localeCompare(String(b.start));
   });
+}
+
+export function pastPlansWithoutGrade(s = getState(), today = todayISO()) {
+  return pastExams(s, today).filter((plan) => plan.type !== 'estudio' && plan.grade == null && !plan.gradeAsked);
+}
+
+export function averageGrade(s = getState()) {
+  const graded = (s.exams || []).filter((plan) => Number.isFinite(plan.grade));
+  if (!graded.length) return null;
+  const total = graded.reduce((acc, plan) => acc + plan.grade, 0);
+  return Math.round((total / graded.length) * 10) / 10;
 }
 
 export function classesToday(today = todayISO(), s = getState()) {

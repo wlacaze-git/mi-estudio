@@ -2,7 +2,8 @@
 import {
   getState, load, replaceState, subscribe, subjectById,
   update, uid, achievements, addXp, levelInfo,
-  activeProfile, activeProfileId, createProfile, deleteProfile, profileStateOf, renameProfile, switchProfile,
+  activeProfile, activeProfileId, createProfile, deleteProfile, pastPlansWithoutGrade, profileStateOf,
+  renameProfile, switchProfile, upcomingExams,
 } from './js/store.js';
 import { addDays, buildICS, fmtLong, todayISO, diffDays } from './js/dates.js';
 import {
@@ -13,6 +14,7 @@ import {
   esc, toast, openModal, closeModal, isModalOpen, downloadFile,
 } from './js/ui.js';
 import { animalAvatar, animalForLevel } from './js/animals.js';
+import { buildReply, gradeQuestion, welcomeText } from './js/perla.js';
 import {
   blobToDataURL, dataURLToBlob, deleteImage, deleteImages, getImageBlob,
   hydrate, imageUrl, putImage, saveFile,
@@ -67,6 +69,7 @@ let modal = null;
 let recordedSessions = new Set();
 let noteDraft = null;
 let planDraft = null;
+let perlaDraft = { images: [], notes: [], youtube: [] };
 
 /* ----------------------------- Render ----------------------------- */
 
@@ -94,6 +97,8 @@ function render() {
     html = views.renderQuiz(quizSession, current);
   } else if (route.view === 'tarjetas') {
     html = views.renderFlashcards(cardsSession, current);
+  } else if (route.view === 'perla') {
+    html = views.renderPerla(current, { draft: perlaDraft });
   } else if (route.view === 'perfil') {
     html = views.renderPerfil(current, { today });
   } else if (route.view === 'ajustes') {
@@ -103,6 +108,10 @@ function render() {
   viewEl.innerHTML = html;
   hydrate(viewEl);
   document.body.dataset.view = route.view;
+  if (route.view === 'perla') {
+    const box = document.getElementById('perla-messages');
+    if (box) box.scrollTop = box.scrollHeight;
+  }
 
   const activeView = route.view === 'subject' ? 'materias' : route.view === 'tarjetas' ? 'practica' : route.view;
   for (const btn of navButtons) {
@@ -201,6 +210,15 @@ function showModal(kind, payload = {}) {
   } else if (kind === 'import-schedule') {
     html = views.renderImportSchedule();
     label = 'Importar horario';
+  } else if (kind === 'note-picker') {
+    html = views.renderNotePicker(current);
+    label = 'Elegir apunte';
+  } else if (kind === 'youtube') {
+    html = views.renderYouTubeForm();
+    label = 'Video de YouTube';
+  } else if (kind === 'grade') {
+    html = views.renderGradeModal(payload.plan);
+    label = 'Nota del examen';
   } else if (kind === 'onboarding') {
     html = views.renderOnboarding();
     label = 'Bienvenida';
@@ -213,6 +231,7 @@ function showModal(kind, payload = {}) {
   }
   if (kind === 'note-view') hydrate(document.getElementById('modal-root'));
   if (kind === 'plan' || kind === 'plan-view') hydrate(document.getElementById('modal-root'));
+  if (kind === 'perla') hydrate(document.getElementById('modal-root'));
 }
 
 /* --------------------------- Fotos de apuntes --------------------------- */
@@ -267,6 +286,84 @@ function discardPlanDraft() {
   const pending = [...planDraft.newImages];
   planDraft = null;
   if (pending.length) deleteImages(pending);
+}
+
+/* ----------------------------- My Perla ----------------------------- */
+
+function perlaMessage(role, text, extra = {}) {
+  return {
+    id: uid('pm'),
+    role,
+    text: text || '',
+    at: new Date().toISOString(),
+    images: [],
+    notes: [],
+    youtube: [],
+    ...extra,
+  };
+}
+
+function addPerlaMessage(message) {
+  update((s) => {
+    s.perla.messages.push(message);
+    s.perla.messages = s.perla.messages.slice(-80);
+  });
+}
+
+function openPerla() {
+  const current = getState();
+  if ((current.perla.messages || []).length) return;
+  const pending = pastPlansWithoutGrade(current);
+  if (pending.length) {
+    const plan = pending[0];
+    addPerlaMessage(perlaMessage('perla', gradeQuestion(plan, current), { kind: 'grade', planId: plan.id }));
+  } else {
+    addPerlaMessage(perlaMessage('perla', welcomeText(current)));
+  }
+}
+
+function sendPerla(text) {
+  const message = perlaMessage('user', text, {
+    images: [...perlaDraft.images],
+    notes: [...perlaDraft.notes],
+    youtube: [...perlaDraft.youtube],
+  });
+  const hasContent = message.text.trim() || message.images.length || message.notes.length || message.youtube.length;
+  if (!hasContent) return;
+  perlaDraft = { images: [], notes: [], youtube: [] };
+  addPerlaMessage(message);
+  render();
+  setTimeout(() => {
+    const reply = buildReply(getState(), text, message);
+    addPerlaMessage(perlaMessage('perla', reply));
+    render();
+  }, 450);
+}
+
+function answerGrade(planId, grade) {
+  update((s) => {
+    const plan = s.exams.find((p) => p.id === planId);
+    if (plan) {
+      plan.grade = grade;
+      plan.gradeAsked = true;
+    }
+    const question = s.perla.messages.find((m) => m.kind === 'grade' && m.planId === planId && !m.answered);
+    if (question) question.answered = true;
+    s.perla.messages.push(perlaMessage('user', grade == null ? 'No me acuerdo.' : `Me saqué un ${grade}.`));
+    if (grade != null && grade < 6) {
+      s.perla.messages.push(perlaMessage('perla', 'No pasa nada, para eso estamos. Ese tema lo podemos repasar con preguntas.'));
+    } else if (grade != null) {
+      s.perla.messages.push(perlaMessage('perla', '¡Bien! La guardé en tus notas.'));
+    }
+    const pending = pastPlansWithoutGrade(s);
+    if (pending.length) {
+      const nextPlan = pending[0];
+      s.perla.messages.push(perlaMessage('perla', gradeQuestion(nextPlan, s), { kind: 'grade', planId: nextPlan.id }));
+    } else {
+      s.perla.messages.push(perlaMessage('perla', 'Listo, ya tengo tus notas guardadas. ¿Qué querés hacer ahora?'));
+    }
+    s.perla.messages = s.perla.messages.slice(-80);
+  });
 }
 
 function openLightbox(url) {
@@ -467,6 +564,7 @@ document.addEventListener('click', (event) => {
 
   switch (action) {
     case 'nav':
+      if (el.dataset.view === 'perla') openPerla();
       go({ view: el.dataset.view, subjectId: el.dataset.id || null });
       return;
     case 'close-modal':
@@ -739,6 +837,66 @@ document.addEventListener('click', (event) => {
       update((s) => { s.schedule = (s.schedule || []).filter((c) => c.id !== el.dataset.id); });
       closeModal();
       toast('Clase borrada');
+      return;
+    case 'perla-quick':
+      sendPerla(el.dataset.text || '');
+      return;
+    case 'perla-attach-note':
+      showModal('note-picker');
+      return;
+    case 'perla-pick-note': {
+      const note = getState().notes.find((n) => n.id === el.dataset.id);
+      if (note && !perlaDraft.notes.some((n) => n.id === note.id)) {
+        perlaDraft.notes.push({ id: note.id, title: note.title });
+      }
+      closeModal();
+      render();
+      return;
+    }
+    case 'perla-youtube':
+      showModal('youtube');
+      return;
+    case 'perla-remove-image':
+      perlaDraft.images = perlaDraft.images.filter((id) => id !== el.dataset.id);
+      render();
+      return;
+    case 'perla-remove-note':
+      perlaDraft.notes = perlaDraft.notes.filter((note) => note.id !== el.dataset.id);
+      render();
+      return;
+    case 'perla-remove-youtube':
+      perlaDraft.youtube = perlaDraft.youtube.filter((video) => video.videoId !== el.dataset.id);
+      render();
+      return;
+    case 'perla-grade':
+      answerGrade(el.dataset.plan, Number(el.dataset.grade));
+      return;
+    case 'perla-grade-skip':
+      answerGrade(el.dataset.plan, null);
+      return;
+    case 'edit-grade': {
+      const plan = getState().exams.find((p) => p.id === el.dataset.id);
+      if (plan) showModal('grade', { plan });
+      return;
+    }
+    case 'set-grade': {
+      update((s) => {
+        const plan = s.exams.find((p) => p.id === el.dataset.id);
+        if (plan) { plan.grade = Number(el.dataset.grade); plan.gradeAsked = true; }
+        const question = s.perla.messages.find((m) => m.kind === 'grade' && m.planId === el.dataset.id && !m.answered);
+        if (question) question.answered = true;
+      });
+      closeModal();
+      toast('Nota guardada');
+      return;
+    }
+    case 'clear-grade':
+      update((s) => {
+        const plan = s.exams.find((p) => p.id === el.dataset.id);
+        if (plan) plan.grade = null;
+      });
+      closeModal();
+      toast('Nota borrada');
       return;
     case 'add-profile':
       showModal('profile');
@@ -1131,6 +1289,23 @@ document.addEventListener('submit', (event) => {
     return;
   }
 
+  if (kind === 'youtube') {
+    const url = String(data.get('url') || '').trim();
+    const title = String(data.get('title') || '').trim();
+    const match = url.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/);
+    if (!match) { toast('Ese link no parece de YouTube', 'warn'); return; }
+    perlaDraft.youtube.push({ url, videoId: match[1], title: title || 'Video de YouTube' });
+    closeModal();
+    render();
+    return;
+  }
+
+  if (kind === 'perla') {
+    const text = String(data.get('text') || '').trim();
+    sendPerla(text);
+    return;
+  }
+
   if (kind === 'name') {
     const student = String(data.get('student') || '').trim();
     update((s) => { s.student = student; });
@@ -1270,6 +1445,23 @@ document.addEventListener('change', async (event) => {
 });
 
 document.addEventListener('modal:closed', () => { discardNoteDraft(); discardPlanDraft(); });
+
+// Fotos que se mandan a Perla en el chat.
+document.addEventListener('change', async (event) => {
+  const input = event.target.closest('input[data-role=perla-photo]');
+  if (!input) return;
+  const file = (input.files || [])[0];
+  input.value = '';
+  if (!file) return;
+  try {
+    const saved = await saveFile(file);
+    perlaDraft.images.push(saved.id);
+    render();
+  } catch (err) {
+    console.error(err);
+    toast('No pude subir esa foto', 'warn');
+  }
+});
 
 // Buscar dentro de los apuntes sin volver a dibujar (para no perder el foco).
 document.addEventListener('input', (event) => {

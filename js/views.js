@@ -1520,6 +1520,7 @@ export function renderPlanView(state, plan) {
       ${plan.date ? `<span class="countdown">${esc(countdownLabel(plan.date))}</span>` : '<span class="pill">Sin fecha</span>'}
     </div>
     ${plan.date ? `<p class="muted small">${esc(fmtLong(plan.date))}</p>` : ''}
+    ${Number.isFinite(plan.grade) ? `<p class="plan-grade">Nota: <strong>${plan.grade}</strong></p>` : ''}
     ${plan.topics && plan.topics.length ? `
       <div class="topics">
         <div class="topics-head">
@@ -1539,6 +1540,7 @@ export function renderPlanView(state, plan) {
     <div class="modal-foot">
       <button type="button" class="btn btn-danger btn-small" data-action="delete-exam" data-id="${esc(plan.id)}">Borrar</button>
       <div class="foot-right">
+        ${plan.date ? `<button type="button" class="btn btn-plain" data-action="edit-grade" data-id="${esc(plan.id)}">${Number.isFinite(plan.grade) ? 'Cambiar nota' : 'Poner nota'}</button>` : ''}
         <button type="button" class="btn btn-plain" data-action="start-quiz" data-subject="${esc(plan.subjectId)}">Practicar</button>
         <button type="button" class="btn btn-primary" data-action="edit-exam" data-id="${esc(plan.id)}">Editar</button>
       </div>
@@ -1679,3 +1681,205 @@ export function renderConfirm({ title, text, confirmLabel = 'Borrar', action, id
 }
 
 
+
+/* ========================= MY PERLA ========================= */
+
+function perlaAttachments(message) {
+  const images = message.images || [];
+  const notes = message.notes || [];
+  const videos = message.youtube || [];
+  return `
+    ${images.length ? `<div class="perla-images">${images.map((id) => `<button type="button" class="perla-image" data-action="open-photo" data-image-id="${esc(id)}"><img data-image-id="${esc(id)}" alt="Foto enviada a Perla"></button>`).join('')}</div>` : ''}
+    ${notes.length ? `<div class="perla-chips">${notes.map((note) => `<span class="perla-chip">📝 ${esc(note.title)}</span>`).join('')}</div>` : ''}
+    ${videos.length ? `<div class="perla-videos">${videos.map((video) => `
+      <a class="perla-video" href="${esc(video.url)}" target="_blank" rel="noopener">
+        <img src="https://i.ytimg.com/vi/${esc(video.videoId)}/hqdefault.jpg" alt="" loading="lazy">
+        <span>▶ ${esc(video.title || 'Video de YouTube')}</span>
+      </a>`).join('')}</div>` : ''}
+  `;
+}
+
+function gradeButtons(planId) {
+  return `
+    <div class="grade-picker">
+      ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((grade) => `<button type="button" class="grade-btn" data-action="perla-grade" data-plan="${esc(planId)}" data-grade="${grade}">${grade}</button>`).join('')}
+      <button type="button" class="grade-skip" data-action="perla-grade-skip" data-plan="${esc(planId)}">No me acuerdo</button>
+    </div>`;
+}
+
+function perlaMessage(message) {
+  const isUser = message.role === 'user';
+  return `
+    <div class="perla-msg ${isUser ? 'is-user' : 'is-perla'}">
+      ${isUser ? '' : '<img class="perla-msg-avatar" src="icons/logo-perla.png" alt="">'}
+      <div class="perla-bubble">
+        ${message.text ? `<p>${esc(message.text).replace(/\n/g, '<br>')}</p>` : ''}
+        ${perlaAttachments(message)}
+        ${message.kind === 'grade' && !message.answered ? gradeButtons(message.planId) : ''}
+      </div>
+    </div>`;
+}
+
+export function renderPerla(state, { draft = null } = {}) {
+  const messages = (state.perla && state.perla.messages) || [];
+  const graded = (state.exams || []).filter((plan) => Number.isFinite(plan.grade));
+  const average = graded.length
+    ? Math.round((graded.reduce((acc, plan) => acc + plan.grade, 0) / graded.length) * 10) / 10
+    : null;
+  const suggestions = ['¿Qué examen tengo?', '¿Qué estudio hoy?', '¿Cómo me fue?', '¿Qué clases tengo?'];
+
+  return `
+    <section class="page-head">
+      <div>
+        <p class="eyebrow">My Perla</p>
+        <h1 class="page-title">Hablá con Perla</h1>
+        <p class="muted small">Tu compañera de estudio: puede mirar tus planes, tus notas, tu horario y tus apuntes.</p>
+      </div>
+    </section>
+
+    <div class="perla-layout">
+      <section class="perla-card">
+        <header class="perla-head">
+          <img class="perla-avatar" src="icons/logo-perla.png" alt="Perla">
+          <div class="perla-head-copy">
+            <strong>Perla</strong>
+            <span>Guepardo de estudio</span>
+          </div>
+          <span class="perla-status">en línea</span>
+        </header>
+
+        <div class="perla-messages" id="perla-messages">
+          ${messages.length
+            ? messages.map((message) => perlaMessage(message)).join('')
+            : '<p class="muted small perla-empty">Escribile algo a Perla para empezar.</p>'}
+        </div>
+
+        ${draft && (draft.images.length || draft.notes.length || draft.youtube.length) ? `
+          <div class="perla-pending">
+            ${draft.images.map((id) => `<span class="perla-pending-item"><img data-image-id="${esc(id)}" alt=""> <button type="button" data-action="perla-remove-image" data-id="${esc(id)}" aria-label="Quitar">✕</button></span>`).join('')}
+            ${draft.notes.map((note) => `<span class="perla-pending-item">📝 ${esc(note.title)} <button type="button" data-action="perla-remove-note" data-id="${esc(note.id)}" aria-label="Quitar">✕</button></span>`).join('')}
+            ${draft.youtube.map((video) => `<span class="perla-pending-item">▶ ${esc(video.title || 'Video')} <button type="button" data-action="perla-remove-youtube" data-id="${esc(video.videoId)}" aria-label="Quitar">✕</button></span>`).join('')}
+          </div>` : ''}
+
+        <form class="perla-composer" data-form="perla">
+          <div class="perla-tools">
+            <label class="icon-btn" title="Subir foto">
+              <input type="file" accept="image/*" data-role="perla-photo" hidden>
+              📷
+            </label>
+            <button type="button" class="icon-btn" data-action="perla-attach-note" title="Adjuntar apunte">📝</button>
+            <button type="button" class="icon-btn" data-action="perla-youtube" title="Video de YouTube">▶</button>
+          </div>
+          <textarea name="text" rows="1" placeholder="Escribile a Perla…" maxlength="500"></textarea>
+          <button type="submit" class="btn btn-primary">Enviar</button>
+        </form>
+
+        <div class="perla-suggestions">
+          ${suggestions.map((text) => `<button type="button" class="perla-suggestion" data-action="perla-quick" data-text="${esc(text)}">${esc(text)}</button>`).join('')}
+        </div>
+      </section>
+
+      <aside class="perla-side">
+        <section class="card">
+          <div class="card-head">
+            <h2 class="card-title">Mis notas</h2>
+            ${average != null ? `<span class="pill">Promedio ${average}</span>` : ''}
+          </div>
+          ${graded.length
+            ? `<ul class="grade-list">${graded.slice().reverse().map((plan) => {
+                const subject = subjectById(plan.subjectId, state);
+                return `
+                  <li class="grade-row">
+                    <span class="grade-number">${plan.grade}</span>
+                    <div class="grade-body">
+                      <strong>${esc(plan.title)}</strong>
+                      <small>${esc(subject ? subject.name : 'Materia')} · ${esc(fmtShort(plan.date))}</small>
+                    </div>
+                    <button type="button" class="icon-btn" data-action="edit-grade" data-id="${esc(plan.id)}" aria-label="Cambiar nota">✎</button>
+                  </li>`;
+              }).join('')}</ul>`
+            : '<p class="muted small">Todavía no cargaste notas. Cuando te tomen un examen, contale a Perla y queda guardada.</p>'}
+        </section>
+
+        <section class="card">
+          <h2 class="card-title">Qué puedo hacer</h2>
+          <ul class="perla-abilities">
+            <li>📅 Ver tus exámenes y tests.</li>
+            <li>📚 Decirte qué estudiar hoy.</li>
+            <li>📝 Buscar en tus apuntes.</li>
+            <li>🕒 Contarte tu horario del día.</li>
+            <li>🏅 Guardar tus notas y el promedio.</li>
+          </ul>
+          <p class="muted small">Podés mandarle fotos, apuntes y videos de YouTube para tenerlos a mano en la charla.</p>
+        </section>
+      </aside>
+    </div>`;
+}
+
+export function renderGradeModal(plan) {
+  return `
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow">Nota</p>
+        <h2>${esc(plan.title)}</h2>
+      </div>
+      <button type="button" class="icon-btn" data-action="close-modal" aria-label="Cerrar">✕</button>
+    </div>
+    <p class="muted small">¿Qué nota te sacaste?</p>
+    <div class="grade-picker is-modal" data-plan="${esc(plan.id)}">
+      ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((grade) => `<button type="button" class="grade-btn" data-action="set-grade" data-id="${esc(plan.id)}" data-grade="${grade}">${grade}</button>`).join('')}
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-plain" data-action="close-modal">Cancelar</button>
+      <button type="button" class="btn btn-danger btn-small" data-action="clear-grade" data-id="${esc(plan.id)}">Borrar nota</button>
+    </div>`;
+}
+
+export function renderNotePicker(state) {
+  const notes = notesSorted(state);
+  return `
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow">Adjuntar</p>
+        <h2>Elegí un apunte</h2>
+      </div>
+      <button type="button" class="icon-btn" data-action="close-modal" aria-label="Cerrar">✕</button>
+    </div>
+    ${notes.length
+      ? `<ul class="picker-list">${notes.map((note) => {
+          const subject = subjectById(note.subjectId, state);
+          return `
+            <li>
+              <button type="button" class="picker-item" data-action="perla-pick-note" data-id="${esc(note.id)}">
+                <span class="picker-emoji">${esc(subject ? subject.emoji || '📘' : '📘')}</span>
+                <span class="picker-copy"><strong>${esc(note.title)}</strong><small>${esc(subject ? subject.name : '')}</small></span>
+              </button>
+            </li>`;
+        }).join('')}</ul>`
+      : `<p class="muted">No hay apuntes todavía. Podés crearlos desde la sección Apuntes.</p>`}`;
+}
+
+export function renderYouTubeForm() {
+  return `
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow">Video</p>
+        <h2>Agregar video de YouTube</h2>
+      </div>
+      <button type="button" class="icon-btn" data-action="close-modal" aria-label="Cerrar">✕</button>
+    </div>
+    <form class="form" data-form="youtube">
+      <label class="field">
+        <span>Link del video</span>
+        <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
+      </label>
+      <label class="field">
+        <span>Título (opcional)</span>
+        <input type="text" name="title" placeholder="Ej.: Fracciones explicadas" maxlength="80">
+      </label>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-plain" data-action="close-modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Agregar</button>
+      </div>
+    </form>`;
+}

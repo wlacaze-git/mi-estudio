@@ -16,6 +16,10 @@
 | --- |
 | ![Apunte con una foto del pizarrón](capturas/apunte-foto.png) |
 
+| My Perla |
+| --- |
+| ![Chat de My Perla, con la pregunta de la nota y las notas guardadas](capturas/perla.png) |
+
 | Horario de la semana | Importar horario |
 | --- | --- |
 | ![Horario de lunes a viernes con foto y clases](capturas/horario.png) | ![Importar el horario pegando el texto](capturas/importar-horario.png) |
@@ -28,7 +32,7 @@
 | --- |
 | ![Detalle del plan con sus fotos](capturas/plan-vista.png) |
 
-App para estudiar desde el iPad, en **rosa claro con animal print** (manchas rosadas sobre blanco, como el ícono): calendario de exámenes, plan de repaso, preguntas de multiple choice, tarjetas y apuntes. Funciona sin internet una vez instalada y guarda todo en el dispositivo.
+App para estudiar desde el iPad, en **rosa claro**, con **Perla** (el guepardo rosa) como logo y compañera: calendario de exámenes, plan de repaso, preguntas de multiple choice, tarjetas y apuntes. Funciona sin internet una vez instalada y guarda todo en el dispositivo.
 
 Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exámenes y preguntas; la app le avisa qué le toca estudiar cada día y le toma examen.
 
@@ -39,6 +43,7 @@ Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exáme
 | Sección | Para qué sirve |
 | --- | --- |
 | **Hoy** | Saludo, nivel y XP, racha de días estudiando, próximo examen con cuenta regresiva, **clases del día** y las tareas de repaso. |
+| **My Perla** | Chat con Perla: le hablás, le mandás fotos, apuntes y videos, y te responde con tus exámenes, notas, horario y apuntes. |
 | **Horario** | De lunes a viernes: materia, hora y **profesor/a** de cada clase, con **foto del horario** y opción de crear materias nuevas. |
 | **Calendario** | Vista mensual con los exámenes y tests marcados por materia. Al tocar un día se ve el detalle y se puede editar. |
 | **Materias** | Cada materia con sus preguntas, exámenes y apuntes, más el porcentaje de aciertos. |
@@ -140,6 +145,19 @@ Una web app no puede programar notificaciones locales como una app nativa. La so
 Además, al abrir la app siempre ves la cuenta regresiva y “Para hoy”.
 
 Si más adelante querés notificaciones push reales, hace falta un servidor (y en iOS solo funcionan con la app instalada). Es el paso siguiente si les sirve.
+
+---
+
+## My Perla
+
+Perla es la compañera de estudio (el guepardo rosa del logo). Se abre desde la barra de arriba y funciona como un chat:
+
+- **Te recibe con una pregunta**: si hay exámenes o tests pasados sin nota, te pregunta **qué nota te sacaste** y la guarda. Después sigue con el próximo.
+- **Le podés escribir**: “¿qué examen tengo?”, “¿qué estudio hoy?”, “¿cómo me fue?”, “¿qué clases tengo?”, “mis apuntes de fracciones”.
+- **Le podés mandar fotos** (cámara o galería), **apuntes** de la sección Apuntes y **videos de YouTube**, y quedan guardados en la charla.
+- **Mis notas**: en el panel de la derecha se ven las notas de los exámenes y el promedio. También se pueden cargar o cambiar desde el detalle de cada plan (“Poner nota”).
+
+> **Sobre la IA**: la app es local y Perla responde con tus datos reales (planes, notas, horario, apuntes), sin conexión. Para preguntas libres hace falta conectar un modelo de IA con clave (OpenAI, Gemini, etc.) o un servidor; queda como próximo paso. Hoy la foto se guarda, pero no se interpreta sola.
 
 ---
 
