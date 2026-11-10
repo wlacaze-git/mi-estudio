@@ -1,5 +1,7 @@
 # Mi Estudio 🎒
 
+<img src="icons/icon-192.png" alt="Ícono de la app: animal print rosa" width="88" align="right">
+
 **App publicada:** <https://wlacaze-git.github.io/mi-estudio/>
 
 | Hoy | Perfil y logros |
@@ -14,7 +16,7 @@
 | --- |
 | ![Apunte con una foto del pizarrón](capturas/apunte-foto.png) |
 
-App para estudiar desde el iPad: calendario de exámenes, plan de repaso, preguntas de multiple choice, tarjetas y apuntes. Funciona sin internet una vez instalada y guarda todo en el dispositivo.
+App para estudiar desde el iPad, con identidad **rosa y animal print**: calendario de exámenes, plan de repaso, preguntas de multiple choice, tarjetas y apuntes. Funciona sin internet una vez instalada y guarda todo en el dispositivo.
 
 Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exámenes y preguntas; la app le avisa qué le toca estudiar cada día y le toma examen.
 
