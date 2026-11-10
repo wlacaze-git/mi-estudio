@@ -2,6 +2,7 @@
 import {
   getState, load, replaceState, subscribe, subjectById,
   update, uid, exportJSON, achievements, addXp, levelInfo,
+  activeProfile, activeProfileId, createProfile, deleteProfile, renameProfile, switchProfile,
 } from './js/store.js';
 import { addDays, buildICS, fmtLong, todayISO, diffDays } from './js/dates.js';
 import {
@@ -128,6 +129,9 @@ function showModal(kind, payload = {}) {
   } else if (kind === 'note-view') {
     html = views.renderNoteView(current, payload.note);
     label = 'Apunte';
+  } else if (kind === 'profile') {
+    html = views.renderProfileForm();
+    label = 'Agregar persona';
   } else if (kind === 'onboarding') {
     html = views.renderOnboarding();
     label = 'Bienvenida';
@@ -481,6 +485,41 @@ document.addEventListener('click', (event) => {
       noteFilter = el.dataset.subject || '';
       render();
       return;
+    case 'add-profile':
+      showModal('profile');
+      return;
+    case 'switch-profile': {
+      const profile = switchProfile(el.dataset.id);
+      if (!profile) return;
+      quizSession = null;
+      cardsSession = null;
+      knownBadges = null;
+      closeModal();
+      go({ view: 'hoy' });
+      toast(`Ahora usa la app ${profile.name}`);
+      return;
+    }
+    case 'delete-profile':
+      showModal('confirm', {
+        title: '¿Borrar a esta persona?',
+        text: 'Se borran sus materias, exámenes, preguntas, apuntes y todo su progreso de este iPad. No se puede deshacer.',
+        confirmLabel: 'Borrar persona',
+        action: 'confirm-delete-profile',
+        id: el.dataset.id,
+      });
+      return;
+    case 'confirm-delete-profile': {
+      const removed = deleteProfile(el.dataset.id);
+      closeModal();
+      if (removed) {
+        knownBadges = null;
+        toast('Persona borrada');
+        render();
+      } else {
+        toast('Tiene que quedar al menos una persona', 'warn');
+      }
+      return;
+    }
     case 'toggle-task': {
       const key = el.dataset.key;
       const done = el.dataset.done === '1';
@@ -685,14 +724,29 @@ document.addEventListener('submit', (event) => {
   if (kind === 'name') {
     const student = String(data.get('student') || '').trim();
     update((s) => { s.student = student; });
+    renameProfile(activeProfileId(), student);
     toast('Guardado');
     render();
+    return;
+  }
+
+  if (kind === 'profile') {
+    const name = String(data.get('name') || '').trim();
+    if (!name) { toast('Poné un nombre', 'warn'); return; }
+    createProfile(name);
+    quizSession = null;
+    cardsSession = null;
+    knownBadges = null;
+    closeModal();
+    go({ view: 'hoy' });
+    toast(`¡Hola, ${name}!`);
     return;
   }
 
   if (kind === 'onboarding') {
     const student = String(data.get('student') || '').trim();
     update((s) => { s.student = student; s.settings.onboarded = true; });
+    if (student) renameProfile(activeProfileId(), student);
     closeModal();
     toast(`¡Bienvenida${student ? ', ' + student : ''}!`);
     render();

@@ -5,8 +5,8 @@ import {
   monthLabel, monthMatrix, relativeLabel, todayISO, WEEKDAYS_SHORT,
 } from './dates.js';
 import {
-  achievements, examsSorted, levelInfo, masteryOf, notesOf, notesSorted, pastExams,
-  questionsOf, streak, studyPlan, studyStats,
+  achievements, activeProfileId, examsSorted, levelInfo, listProfiles, masteryOf, notesOf,
+  notesSorted, pastExams, questionsOf, streak, studyPlan, studyStats,
   subjectById, subjectsSorted, tasksForDate, upcomingExams, wrongQuestions,
 } from './store.js';
 import { gradeMessage, cardSummary } from './quiz.js';
@@ -896,6 +896,8 @@ export function renderPerfil(state, { today }) {
   const unlocked = badges.filter((b) => b.done).length;
   const subjects = subjectsSorted(state).filter((s) => questionsOf(s.id, state).length);
   const xpToNext = level.need - level.inLevel;
+  const profiles = listProfiles();
+  const activeId = activeProfileId();
 
   return `
     <section class="profile-head">
@@ -963,8 +965,52 @@ export function renderPerfil(state, { today }) {
         </ul>
       </section>` : ''}
 
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Personas en este iPad</h2>
+        <button type="button" class="btn btn-soft btn-small" data-action="add-profile">+ Agregar persona</button>
+      </div>
+      <ul class="profile-list">
+        ${profiles.map((profile) => `
+          <li class="profile-row ${profile.id === activeId ? 'is-active' : ''}">
+            <span class="profile-mini">${esc(initials(profile.name))}</span>
+            <div class="profile-row-copy">
+              <strong>${esc(profile.name)}</strong>
+              <small>${profile.id === activeId ? 'Usando la app ahora' : 'Tocá para entrar a su espacio'}</small>
+            </div>
+            ${profile.id === activeId
+              ? '<span class="pill">Activa</span>'
+              : `<button type="button" class="btn btn-plain btn-small" data-action="switch-profile" data-id="${esc(profile.id)}">Cambiar</button>
+                 <button type="button" class="icon-btn danger" data-action="delete-profile" data-id="${esc(profile.id)}" aria-label="Borrar a ${esc(profile.name)}">✕</button>`}
+          </li>`).join('')}
+      </ul>
+      <p class="muted small">Cada persona tiene sus materias, exámenes, preguntas, apuntes, XP y logros por separado. Todo se guarda en este iPad.</p>
+    </section>
+
     <p class="muted small center">Ganás XP por cada respuesta, tarjeta y tarea completada. La racha sube cuando estudiás cada día.</p>
   `;
+}
+
+export function renderProfileForm() {
+  return `
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow">Nueva</p>
+        <h2>Agregar persona</h2>
+      </div>
+      <button type="button" class="icon-btn" data-action="close-modal" aria-label="Cerrar">✕</button>
+    </div>
+    <form class="form" data-form="profile">
+      <label class="field">
+        <span>¿Cómo se llama?</span>
+        <input type="text" name="name" placeholder="Nombre" maxlength="40" required autocomplete="given-name">
+      </label>
+      <p class="muted small">Arranca con su espacio vacío: sus propias materias, exámenes, apuntes y progreso. Podés cambiar de persona cuando quieras desde el perfil.</p>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-plain" data-action="close-modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Crear persona</button>
+      </div>
+    </form>`;
 }
 
 /* =========================== AJUSTES =========================== */

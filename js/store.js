@@ -3,9 +3,136 @@ import { seedState } from './seed.js';
 import { addDays, diffDays, todayISO } from './dates.js';
 
 const KEY = 'miEstudio.v1';
+const REGISTRY_KEY = 'miEstudio.profiles';
+const STATE_KEY = (id) => `miEstudio.v1.${id}`;
 const listeners = new Set();
 
 let state = null;
+
+function newProfileId() {
+  return `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+}
+
+function readJSON(key, fallback = null) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeRegistry(registry) {
+  localStorage.setItem(REGISTRY_KEY, JSON.stringify(registry));
+}
+
+/**
+ * Lista de personas (perfiles) guardadas en este dispositivo.
+ * Si venía la versión de un solo perfil, la migra al primero.
+ */
+export function ensureRegistry() {
+  let registry = readJSON(REGISTRY_KEY, null);
+  const valid = registry && Array.isArray(registry.profiles) && registry.profiles.length > 0;
+  if (!valid) {
+    const legacy = readJSON(KEY, null);
+    const id = newProfileId();
+    const name = String((legacy && legacy.student) || '').trim() || 'Estudiante';
+    registry = { profiles: [{ id, name }], active: id };
+    if (legacy) localStorage.setItem(STATE_KEY(id), JSON.stringify(legacy));
+    writeRegistry(registry);
+    if (legacy) localStorage.removeItem(KEY);
+  }
+  if (!registry.profiles.some((p) => p.id === registry.active)) {
+    registry.active = registry.profiles[0].id;
+    writeRegistry(registry);
+  }
+  return registry;
+}
+
+export function listProfiles() {
+  return ensureRegistry().profiles;
+}
+
+export function activeProfileId() {
+  return ensureRegistry().active;
+}
+
+export function activeProfile() {
+  const registry = ensureRegistry();
+  return registry.profiles.find((p) => p.id === registry.active) || registry.profiles[0];
+}
+
+export function profileNameOf(id) {
+  const profile = listProfiles().find((p) => p.id === id);
+  return profile ? profile.name : 'Estudiante';
+}
+
+export function switchProfile(id) {
+  const registry = ensureRegistry();
+  if (!registry.profiles.some((p) => p.id === id)) return null;
+  registry.active = id;
+  writeRegistry(registry);
+  const raw = readJSON(STATE_KEY(id), null);
+  state = raw ? migrate(raw) : seedState();
+  save();
+  notify();
+  return activeProfile();
+}
+
+export function createProfile(name) {
+  const registry = ensureRegistry();
+  const clean = String(name || '').trim().slice(0, 40) || 'Estudiante';
+  const id = newProfileId();
+  registry.profiles.push({ id, name: clean });
+  registry.active = id;
+  writeRegistry(registry);
+
+  const base = seedState();
+  state = {
+    ...base,
+    student: clean,
+    subjects: [],
+    exams: [],
+    questions: [],
+    notes: [],
+    attempts: [],
+    planDone: {},
+    daysStudied: [],
+    xp: 0,
+    cardsSeen: 0,
+    settings: { showDemo: false, onboarded: true },
+  };
+  save();
+  notify();
+  return id;
+}
+
+export function renameProfile(id, name) {
+  const registry = ensureRegistry();
+  const profile = registry.profiles.find((p) => p.id === id);
+  if (!profile) return;
+  profile.name = String(name || '').trim().slice(0, 40) || 'Estudiante';
+  writeRegistry(registry);
+}
+
+export function deleteProfile(id) {
+  const registry = ensureRegistry();
+  if (registry.profiles.length <= 1) return false;
+  const removingActive = registry.active === id;
+  registry.profiles = registry.profiles.filter((p) => p.id !== id);
+  if (!registry.profiles.some((p) => p.id === registry.active)) {
+    registry.active = registry.profiles[0].id;
+  }
+  writeRegistry(registry);
+  localStorage.removeItem(STATE_KEY(id));
+  if (removingActive) {
+    const raw = readJSON(STATE_KEY(registry.active), null);
+    state = raw ? migrate(raw) : seedState();
+    save();
+    notify();
+  }
+  return true;
+}
 
 function migrate(raw) {
   const base = seedState();
@@ -25,8 +152,10 @@ function migrate(raw) {
 
 export function load() {
   try {
-    const raw = localStorage.getItem(KEY);
-    state = raw ? migrate(JSON.parse(raw)) : seedState();
+    const registry = ensureRegistry();
+    const raw = readJSON(STATE_KEY(registry.active), null);
+    state = raw ? migrate(raw) : seedState();
+    if (!raw) save();
   } catch (err) {
     console.warn('No se pudo leer el guardado, arranco con datos de ejemplo.', err);
     state = seedState();
@@ -40,7 +169,8 @@ export function getState() {
 
 export function save() {
   try {
-    localStorage.setItem(KEY, JSON.stringify(state));
+    const registry = ensureRegistry();
+    localStorage.setItem(STATE_KEY(registry.active), JSON.stringify(state));
   } catch (err) {
     console.warn('No se pudo guardar', err);
     throw err;

@@ -1220,6 +1220,34 @@ input, textarea, select, button { font-family: inherit; }
 .badge-copy strong { font-size: 0.94rem; }
 .badge-copy span { font-size: 0.78rem; color: var(--muted); }
 
+.profile-list { display: flex; flex-direction: column; gap: 10px; }
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.profile-row.is-active { background: linear-gradient(135deg, #ffffff, #f3f0ff); border-color: #d9d0ff; }
+.profile-mini {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-weight: 800;
+  font-size: 0.9rem;
+  flex: none;
+}
+.profile-row.is-active .profile-mini { background: linear-gradient(150deg, #7d6bff, #4636d8); color: #fff; }
+.profile-row-copy { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.profile-row-copy strong { font-size: 0.98rem; }
+.profile-row-copy small { font-size: 0.78rem; color: var(--muted); }
+
 /* ----------------------- Apuntes y tarjetas ----------------------- */
 
 .grid-3 {

@@ -25,7 +25,7 @@ Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exáme
 | **Materias** | Cada materia con sus preguntas, exámenes y apuntes, más el porcentaje de aciertos. |
 | **Apuntes** | Resúmenes por materia, con buscador y filtro. |
 | **Práctica** | Examen simulado (10 preguntas mezcladas), tarjetas de estudio y “repasar las que fallé”. |
-| **Perfil** | Nivel, XP, racha, estadísticas y 12 logros para desbloquear (estilo Knowunity). |
+| **Perfil** | Nivel, XP, racha, estadísticas, 12 logros y las personas que usan la app (estilo Knowunity). |
 | **Ajustes** | Nombre, backup, importar, exportar exámenes al Calendario del iPad y borrar datos. |
 
 Extras:
@@ -116,10 +116,22 @@ Si más adelante querés notificaciones push reales, hace falta un servidor (y e
 
 ---
 
+## Varias personas en el mismo iPad
+
+La app guarda **un espacio separado por persona**. Cada una tiene sus propias materias, exámenes, preguntas, apuntes, XP, racha y logros; nada se mezcla.
+
+- **Agregar**: Perfil → *+ Agregar persona* → nombre. Arranca con su espacio vacío.
+- **Cambiar**: Perfil → *Cambiar* al lado del nombre. Vuelve a “Hoy” con los datos de esa persona.
+- **Borrar**: Perfil → ✕ (solo se pueden borrar las personas que no están activas; siempre queda al menos una).
+
+Todo queda en el iPad, en almacenamiento separado por persona dentro del navegador.
+
+---
+
 ## Datos, backup y privacidad
 
-- Todo se guarda en el **dispositivo** (localStorage). No hay cuentas, servidores ni analytics: nada sale del iPad.
-- **Ajustes → Descargar backup (.json)** guarda un archivo con todo. **Importar backup** lo restaura (sirve para pasar de un dispositivo a otro).
+- Todo se guarda en el **dispositivo** (localStorage), separado por persona. No hay cuentas, servidores ni analytics: nada sale del iPad.
+- **Ajustes → Descargar backup (.json)** guarda un archivo con **la persona activa**. **Importar backup** lo restaura en la persona activa (sirve para pasar de un dispositivo a otro).
 - Si borrás datos del navegador o desinstalás la app, se pierde lo que no esté respaldado.
 
 ---
