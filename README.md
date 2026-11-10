@@ -16,9 +16,9 @@
 | --- |
 | ![Apunte con una foto del pizarrón](capturas/apunte-foto.png) |
 
-| Horario de la semana |
-| --- |
-| ![Horario con materias, horas y profesores](capturas/horario.png) |
+| Horario de la semana | Importar horario |
+| --- | --- |
+| ![Horario de lunes a viernes con foto y clases](capturas/horario.png) | ![Importar el horario pegando el texto](capturas/importar-horario.png) |
 
 | Nuevo plan: para qué es | Nuevo plan: fecha y fotos |
 | --- | --- |
@@ -39,7 +39,7 @@ Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exáme
 | Sección | Para qué sirve |
 | --- | --- |
 | **Hoy** | Saludo, nivel y XP, racha de días estudiando, próximo examen con cuenta regresiva, **clases del día** y las tareas de repaso. |
-| **Horario** | La semana completa: materia, día, hora y **profesor/a** de cada clase. |
+| **Horario** | De lunes a viernes: materia, hora y **profesor/a** de cada clase, con **foto del horario** y opción de crear materias nuevas. |
 | **Calendario** | Vista mensual con los exámenes y tests marcados por materia. Al tocar un día se ve el detalle y se puede editar. |
 | **Materias** | Cada materia con sus preguntas, exámenes y apuntes, más el porcentaje de aciertos. |
 | **Apuntes** | Resúmenes por materia, con buscador, filtro y **fotos** (del pizarrón, la carpeta o el libro). |
@@ -51,7 +51,9 @@ Extras:
 
 - **Plan de estudio guiado**: elegís para qué es (examen, test o solo estudiar), la asignatura y el tema; podés sumar fotos de apuntes o del libro; y si es examen o test, al final ponés la fecha. Los planes sin fecha quedan en “Solo por estudiar”.
 - **Avatar animal**: el avatar es un animal rosa que va mejorando con el nivel: caracol → gato → perro → conejo → zorro → jirafa → león → **guepardo** (el mejor). Cambia solo al subir de nivel y en el perfil se ve la escalera completa.
-- **Horario siempre a mano**: la semana completa con materia, hora y profe; en “Hoy” ves las clases del día y se resalta la que está en curso.
+- **Horario simple**: solo lunes a viernes, con la materia, la hora y el profe. Podés **crear una materia nueva** desde el mismo formulario de la clase.
+- **Foto del horario e importación**: subís una foto del horario para consultarla, y con **“Importar texto”** podés pegar las clases (una por línea) para cargarlas todas de una vez; las materias que no existen se crean solas.
+- **Sobre leer la foto con IA**: la app es 100 % local y no interpreta imágenes por sí sola. Para que lo haga automáticamente hay que conectar un servicio de IA con clave (OpenAI, Gemini, etc.) o un servidor propio; hoy la foto se guarda y la carga se hace con “Importar texto”. El reconocimiento automático queda como próximo paso.
 - **Nivel, XP y logros**: ganás XP por cada respuesta (10 si está bien, 3 si no), tarjeta (6 / 2) y tarea del plan (8). Los niveles suben y hay 12 medallas para desbloquear, con aviso cuando cae una nueva.
 - **Fotos en los apuntes**: desde el editor tocás “Agregar foto” y podés sacarla en el momento o elegir de la galería. Se achican solas (máx. 1400 px) para ocupar poco, se guardan en el iPad y se ven grandes dentro del apunte (tocás para ampliar).
 - **Plan de estudio automático**: reparte los temas de cada examen entre hoy y la víspera, y los muestra como checklist en “Hoy”.
@@ -117,7 +119,8 @@ Cada vez que quieras actualizar la app, volvés a subir la carpeta (o hacés pus
 ## Cómo se carga el contenido
 
 - **Plan de estudio**: Hoy o Calendario → *+ Nuevo plan*. Primero elegís **para qué es** (examen, test o solo estudiar), después la **asignatura** y el **tema** (podés listar varios temas para repartir), y al final la **fecha** si es examen o test, más fotos si querés. Los planes sin fecha aparecen en “Solo por estudiar” y también generan tareas diarias.
-- **Clase del horario**: Horario → *+ Agregar clase* (o el **+** del día). Materia, día, desde/hasta, profesor/a y aula. Se puede tocar cualquier clase para editarla o borrarla.
+- **Clase del horario**: Horario → *+ Agregar clase* (o el **+** del día). Materia (o **＋ Nueva materia…**), día, desde/hasta, profesor/a y aula. Se puede tocar cualquier clase para editarla o borrarla.
+- **Importar horario**: Horario → *Importar texto* y pegás las clases, por ejemplo `Lunes 08:00-09:20 Matemática - Laura Gómez`. También acepta el texto que copia iOS desde la foto (Live Text).
 - **Materia**: Materias → *+ Agregar materia* (nombre, emoji y color).
 - **Pregunta**: Materias → entrá a la materia → *+ Nueva pregunta*. Escribís la pregunta, 4 opciones (podés agregar hasta 6), marcás la correcta y una explicación.
 - **Apunte**: Apuntes → *+ Nuevo apunte*. Título y texto libre.

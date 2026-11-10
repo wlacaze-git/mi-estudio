@@ -422,8 +422,6 @@ export const DAYS = [
   { n: 3, name: 'Miércoles', short: 'Mié' },
   { n: 4, name: 'Jueves', short: 'Jue' },
   { n: 5, name: 'Viernes', short: 'Vie' },
-  { n: 6, name: 'Sábado', short: 'Sáb' },
-  { n: 0, name: 'Domingo', short: 'Dom' },
 ];
 
 export function dayName(number) {
@@ -455,8 +453,7 @@ export function renderHorario(state, { today }) {
   const todayNumber = new Date(`${today}T12:00:00`).getDay();
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const used = new Set(all.map((c) => Number(c.day)));
-  const days = DAYS.filter((d) => (d.n >= 1 && d.n <= 5) || used.has(d.n));
+  const days = DAYS;
 
   return `
     <section class="page-head">
@@ -466,6 +463,31 @@ export function renderHorario(state, { today }) {
         <p class="muted small">Tocá una clase para cambiar la materia, el profe o el horario.</p>
       </div>
       <button type="button" class="btn btn-primary" data-action="add-class">+ Agregar clase</button>
+    </section>
+
+    <section class="card schedule-photo-card">
+      <div class="card-head">
+        <h2 class="card-title">Foto del horario</h2>
+        <button type="button" class="btn btn-plain btn-small" data-action="import-schedule">Importar texto</button>
+      </div>
+      ${state.schedulePhotoId ? `
+        <div class="schedule-photo">
+          <button type="button" class="schedule-photo-btn" data-action="open-photo" data-image-id="${esc(state.schedulePhotoId)}" aria-label="Ver la foto del horario">
+            <img data-image-id="${esc(state.schedulePhotoId)}" alt="Foto del horario">
+          </button>
+          <div class="schedule-photo-actions">
+            <label class="btn btn-plain btn-small file-btn">
+              Cambiar foto
+              <input type="file" accept="image/*" data-role="schedule-photo">
+            </label>
+            <button type="button" class="btn btn-danger btn-small" data-action="delete-schedule-photo">Quitar</button>
+          </div>
+        </div>`
+      : `<label class="schedule-photo-empty">
+          <input type="file" accept="image/*" data-role="schedule-photo" hidden>
+          <span class="btn btn-soft">📷 Subir foto del horario</span>
+          <small class="muted">Guardala acá para consultarla mientras cargás las clases (o para importarla con texto).</small>
+        </label>`}
     </section>
 
     ${all.length ? `
@@ -550,6 +572,7 @@ export function renderClaseForm(state, { clase = null, day = null } = {}) {
           <span>Materia</span>
           <select name="subjectId" required>
             ${state.subjects.map((s) => `<option value="${esc(s.id)}" ${s.id === value.subjectId ? 'selected' : ''}>${esc(s.emoji || '📘')} ${esc(s.name)}</option>`).join('')}
+            <option value="__new">＋ Nueva materia…</option>
           </select>
         </label>
         <label class="field">
@@ -559,6 +582,10 @@ export function renderClaseForm(state, { clase = null, day = null } = {}) {
           </select>
         </label>
       </div>
+      <label class="field" data-new-subject hidden>
+        <span>Nombre de la materia nueva</span>
+        <input type="text" name="newSubject" placeholder="Ej.: Lengua" maxlength="40">
+      </label>
       <div class="field-row">
         <label class="field">
           <span>Desde</span>
@@ -587,8 +614,30 @@ export function renderClaseForm(state, { clase = null, day = null } = {}) {
     </form>`;
 }
 
-/* ========================== MATERIAS ========================== */
+export function renderImportSchedule() {
+  return `
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow">Importar</p>
+        <h2>Importar horario</h2>
+      </div>
+      <button type="button" class="icon-btn" data-action="close-modal" aria-label="Cerrar">✕</button>
+    </div>
+    <p class="muted small">Pegá el texto del horario, una clase por línea. Ejemplo: <strong>Lunes 08:00-09:20 Matemática - Laura Gómez</strong>.</p>
+    <form class="form" data-form="import-schedule">
+      <label class="field">
+        <span>Texto del horario</span>
+        <textarea name="text" rows="8" placeholder="Lunes 08:00-09:20 Matemática - Laura Gómez&#10;Martes 09:30-10:50 Historia - Diego Fernández"></textarea>
+      </label>
+      <p class="muted small">Si una materia no existe, se crea sola. También podés pegar el texto que copia iOS desde la foto del horario (Live Text).</p>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-plain" data-action="close-modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Importar clases</button>
+      </div>
+    </form>`;
+}
 
+/* ========================== MATERIAS ========================== */
 export function renderMaterias(state) {
   const subjects = subjectsSorted(state);
   return `

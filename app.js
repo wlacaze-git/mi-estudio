@@ -24,6 +24,40 @@ const viewEl = document.getElementById('view');
 const brandSub = document.getElementById('brand-sub');
 const navButtons = [...document.querySelectorAll('.nav [data-view]')];
 
+const SUBJECT_COLORS = ['#ec4899', '#f59e0b', '#10b981', '#0ea5e9', '#f97316', '#14b8a6', '#e11d48', '#84cc16'];
+
+const DAY_NUMBERS = { lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5 };
+
+function parseScheduleText(text) {
+  const entries = [];
+  for (const raw of String(text || '').split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+    const dayMatch = line.toLowerCase().match(/\b(lunes|martes|mi[eé]rcoles|jueves|viernes)\b/);
+    if (!dayMatch) continue;
+    const dayKey = dayMatch[1].normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const day = DAY_NUMBERS[dayKey];
+    if (!day) continue;
+    const time = line.match(/(\d{1,2})[:.](\d{2})\s*(?:-|–|—|a|hasta)\s*(\d{1,2})[:.](\d{2})/i);
+    if (!time) continue;
+    const start = String(time[1]).padStart(2, '0') + ':' + time[2];
+    const end = String(time[3]).padStart(2, '0') + ':' + time[4];
+    let rest = line.replace(time[0], ' ').replace(/\s+/g, ' ').trim();
+    rest = rest.replace(/^(lunes|martes|mi[eé]rcoles|jueves|viernes)\b/i, ' ').replace(/\s+/g, ' ').trim();
+    rest = rest.replace(/^[·•\-\s]+/, '').trim();
+    let subjectName = rest;
+    let teacher = '';
+    const parts = rest.split(/\s*[-–—]\s*/);
+    if (parts.length > 1) {
+      subjectName = parts[0].trim();
+      teacher = parts.slice(1).join(' - ').trim();
+    }
+    if (!subjectName) continue;
+    entries.push({ day, start, end, subjectName, teacher });
+  }
+  return entries;
+}
+
 const route = { view: 'hoy', subjectId: null };
 let quizSession = null;
 let cardsSession = null;
@@ -164,6 +198,9 @@ function showModal(kind, payload = {}) {
   } else if (kind === 'clase') {
     html = views.renderClaseForm(current, payload);
     label = payload.clase ? 'Editar clase' : 'Agregar clase';
+  } else if (kind === 'import-schedule') {
+    html = views.renderImportSchedule();
+    label = 'Importar horario';
   } else if (kind === 'onboarding') {
     html = views.renderOnboarding();
     label = 'Bienvenida';
@@ -347,6 +384,7 @@ async function exportBackup() {
   const photosToSave = [
     ...(current.notes || []).flatMap((note) => note.images || []),
     ...(current.exams || []).flatMap((plan) => plan.photos || []),
+    ...(current.schedulePhotoId ? [{ id: current.schedulePhotoId }] : []),
   ];
   for (const photo of photosToSave) {
     try {
@@ -669,6 +707,16 @@ document.addEventListener('click', (event) => {
       closeModal();
       showModal('clase', { day: el.dataset.day ? Number(el.dataset.day) : null });
       return;
+    case 'import-schedule':
+      showModal('import-schedule');
+      return;
+    case 'delete-schedule-photo': {
+      const photoId = getState().schedulePhotoId;
+      update((s) => { s.schedulePhotoId = null; });
+      if (photoId) deleteImage(photoId);
+      toast('Foto del horario quitada');
+      return;
+    }
     case 'edit-class': {
       const clase = (getState().schedule || []).find((c) => c.id === el.dataset.id);
       if (clase) { closeModal(); showModal('clase', { clase }); }
@@ -721,6 +769,7 @@ document.addEventListener('click', (event) => {
       const photos = [
         ...((target && target.notes) || []).flatMap((note) => (note.images || []).map((photo) => photo.id)),
         ...((target && target.exams) || []).flatMap((plan) => (plan.photos || []).map((photo) => photo.id)),
+        ...((target && target.schedulePhotoId) ? [target.schedulePhotoId] : []),
       ];
       const removed = deleteProfile(el.dataset.id);
       closeModal();
@@ -789,6 +838,7 @@ document.addEventListener('click', (event) => {
       const photos = [
         ...(getState().notes || []).flatMap((note) => (note.images || []).map((photo) => photo.id)),
         ...(getState().exams || []).flatMap((plan) => (plan.photos || []).map((photo) => photo.id)),
+        ...(getState().schedulePhotoId ? [getState().schedulePhotoId] : []),
       ];
       update((s) => {
         s.student = '';
@@ -961,16 +1011,28 @@ document.addEventListener('submit', (event) => {
   }
 
   if (kind === 'clase') {
-    const subjectId = String(data.get('subjectId') || '');
+    let subjectId = String(data.get('subjectId') || '');
+    const newSubjectName = String(data.get('newSubject') || '').trim();
     const day = Number(data.get('day'));
     const start = String(data.get('start') || '');
     const end = String(data.get('end') || '');
     const teacher = String(data.get('teacher') || '').trim();
     const room = String(data.get('room') || '').trim();
     if (!subjectId || !start || !end) { toast('Completá materia y horario', 'warn'); return; }
+    if (subjectId === '__new' && !newSubjectName) { toast('Poné el nombre de la materia nueva', 'warn'); return; }
     if (end <= start) { toast('La hora de fin tiene que ser posterior al inicio', 'warn'); return; }
     const id = form.dataset.id;
     update((s) => {
+      if (subjectId === '__new') {
+        const createdSubject = {
+          id: uid('sub'),
+          name: newSubjectName,
+          emoji: '📘',
+          color: SUBJECT_COLORS[s.subjects.length % SUBJECT_COLORS.length],
+        };
+        s.subjects.push(createdSubject);
+        subjectId = createdSubject.id;
+      }
       if (id) {
         const clase = (s.schedule || []).find((c) => c.id === id);
         if (clase) Object.assign(clase, { subjectId, day, start, end, teacher, room, demo: false });
@@ -1033,6 +1095,42 @@ document.addEventListener('submit', (event) => {
     return;
   }
 
+  if (kind === 'import-schedule') {
+    const entries = parseScheduleText(data.get('text'));
+    if (!entries.length) { toast('No encontré clases en ese texto', 'warn'); return; }
+    let created = 0;
+    update((s) => {
+      s.schedule = s.schedule || [];
+      for (const entry of entries) {
+        let subject = s.subjects.find((sub) => sub.name.toLowerCase() === entry.subjectName.toLowerCase());
+        if (!subject) {
+          subject = {
+            id: uid('sub'),
+            name: entry.subjectName,
+            emoji: '📘',
+            color: SUBJECT_COLORS[s.subjects.length % SUBJECT_COLORS.length],
+          };
+          s.subjects.push(subject);
+        }
+        const duplicate = s.schedule.some((c) => Number(c.day) === entry.day && c.start === entry.start && c.subjectId === subject.id);
+        if (duplicate) continue;
+        s.schedule.push({
+          id: uid('c'),
+          subjectId: subject.id,
+          day: entry.day,
+          start: entry.start,
+          end: entry.end,
+          teacher: entry.teacher,
+          room: '',
+        });
+        created += 1;
+      }
+    });
+    closeModal();
+    toast(created ? `${created} clase${created === 1 ? '' : 's'} importada${created === 1 ? '' : 's'}` : 'No había clases nuevas');
+    return;
+  }
+
   if (kind === 'name') {
     const student = String(data.get('student') || '').trim();
     update((s) => { s.student = student; });
@@ -1071,6 +1169,36 @@ document.addEventListener('change', (event) => {
   if (input && input.files && input.files[0]) {
     importBackup(input.files[0]);
     input.value = '';
+  }
+});
+
+// Foto del horario y "materia nueva" desde el formulario de clase.
+document.addEventListener('change', async (event) => {
+  const photoInput = event.target.closest('input[data-role="schedule-photo"]');
+  if (photoInput) {
+    const file = (photoInput.files || [])[0];
+    photoInput.value = '';
+    if (!file) return;
+    try {
+      const saved = await saveFile(file);
+      const previous = getState().schedulePhotoId;
+      update((s) => { s.schedulePhotoId = saved.id; });
+      if (previous) deleteImage(previous);
+      toast('Foto del horario guardada');
+    } catch (err) {
+      console.error(err);
+      toast('No pude subir esa foto', 'warn');
+    }
+    return;
+  }
+
+  const subjectSelect = event.target.closest('form[data-form="clase"] select[name="subjectId"]');
+  if (subjectSelect) {
+    const field = subjectSelect.closest('form').querySelector('[data-new-subject]');
+    if (field) {
+      field.hidden = subjectSelect.value !== '__new';
+      if (!field.hidden) field.querySelector('input')?.focus();
+    }
   }
 });
 

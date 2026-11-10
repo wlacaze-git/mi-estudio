@@ -157,6 +157,7 @@ function migrate(raw) {
     images: Array.isArray(note.images) ? note.images : [],
   }));
   next.schedule = Array.isArray(raw.schedule) ? raw.schedule : [];
+  next.schedulePhotoId = typeof raw.schedulePhotoId === 'string' ? raw.schedulePhotoId : null;
   next.attempts = Array.isArray(raw.attempts) ? raw.attempts : [];
   next.planDone = raw.planDone && typeof raw.planDone === 'object' ? raw.planDone : {};
   next.daysStudied = Array.isArray(raw.daysStudied) ? raw.daysStudied : [];
