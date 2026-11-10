@@ -196,3 +196,51 @@ export function cardSummary(session) {
   const known = session.results.filter((r) => r.ok).length;
   return { total, known, percent: total ? Math.round((known / total) * 100) : 0 };
 }
+
+/* --------------------- Estaciones del camino --------------------- */
+
+export function stationPool(plan, station) {
+  const s = getState();
+  const subjectQuestions = s.questions.filter((q) => q.subjectId === plan.subjectId);
+  if (station.final) return { matching: subjectQuestions, rest: [] };
+  const topic = String(station.topic || '').toLowerCase();
+  const matching = subjectQuestions.filter((q) => {
+    const value = String(q.topic || '').toLowerCase();
+    return value && (value.includes(topic) || topic.includes(value));
+  });
+  const rest = subjectQuestions.filter((q) => !matching.includes(q));
+  return { matching, rest };
+}
+
+export function stationQuestions(plan, station) {
+  const { matching, rest } = stationPool(plan, station);
+  return [...matching, ...rest];
+}
+
+export function buildStationSession(plan, station, { count = 12 } = {}) {
+  const { matching, rest } = stationPool(plan, station);
+  const ordered = [...shuffle(matching), ...shuffle(rest)];
+  if (!ordered.length) return null;
+  const chosen = [];
+  while (chosen.length < count) {
+    for (const question of shuffle(ordered)) {
+      if (chosen.length >= count) break;
+      chosen.push(question);
+    }
+  }
+  const items = chosen.map((question) => {
+    const options = shuffle(
+      question.options.map((text, i) => ({ text, correct: i === question.correct }))
+    );
+    return { question, options, chosenIndex: null, ok: null };
+  });
+  return {
+    id: uid('station'),
+    mode: 'station',
+    subjectId: plan.subjectId,
+    station: { planId: plan.id, key: station.key, topic: station.topic, final: station.final },
+    items,
+    index: 0,
+    finished: false,
+  };
+}

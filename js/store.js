@@ -152,6 +152,7 @@ function migrate(raw) {
     photos: Array.isArray(plan.photos) ? plan.photos : [],
     grade: Number.isFinite(plan.grade) ? plan.grade : null,
     gradeAsked: Boolean(plan.gradeAsked),
+    scores: plan.scores && typeof plan.scores === 'object' ? plan.scores : {},
   }));
   next.questions = Array.isArray(raw.questions) ? raw.questions : [];
   next.notes = (Array.isArray(raw.notes) ? raw.notes : []).map((note) => ({
@@ -285,6 +286,42 @@ export function scheduleSorted(s = getState()) {
   return [...(s.schedule || [])].sort((a, b) => {
     if (Number(a.day) !== Number(b.day)) return Number(a.day) - Number(b.day);
     return String(a.start).localeCompare(String(b.start));
+  });
+}
+
+export function planStations(plan, s = getState(), today = todayISO()) {
+  const data = studyPlan(plan, s, today);
+  const scores = plan.scores || {};
+  const stations = data.items.map((item, index) => ({
+    key: item.key,
+    index,
+    topic: item.topic,
+    date: item.date,
+    done: Boolean(item.done),
+    score: Number.isFinite(scores[item.key]) ? scores[item.key] : null,
+    final: false,
+  }));
+  const finalKey = `${plan.id}|final`;
+  stations.push({
+    key: finalKey,
+    index: stations.length,
+    topic: 'Repaso general',
+    date: plan.date || today,
+    done: Boolean(s.planDone && s.planDone[finalKey]),
+    score: Number.isFinite(scores[finalKey]) ? scores[finalKey] : null,
+    final: true,
+  });
+  return { status: data.status, stations, scores };
+}
+
+export function markStationDone(planId, key, score) {
+  return update((s) => {
+    s.planDone[key] = true;
+    const plan = s.exams.find((p) => p.id === planId);
+    if (plan) {
+      plan.scores = plan.scores || {};
+      plan.scores[key] = Math.round(Number(score) || 0);
+    }
   });
 }
 

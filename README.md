@@ -44,6 +44,7 @@ Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exáme
 | --- | --- |
 | **Hoy** | Saludo, nivel y XP, racha, próximo examen, **lo que agregaste en el calendario para hoy** y las tareas de repaso del día. |
 | **My Perla** | Chat con Perla: le hablás, le mandás fotos, apuntes y videos, y te responde con tus exámenes, notas, horario y apuntes. |
+| **Planes** | Cada plan es un **camino con estaciones**: lección y 12 preguntas por día, y una estación final de repaso general. |
 | **Horario** | De lunes a viernes: materia, hora y **profesor/a** de cada clase, con **foto del horario** y opción de crear materias nuevas. |
 | **Calendario** | Vista mensual con los exámenes y tests marcados por materia. Al tocar un día se ve el detalle y se puede editar. |
 | **Materias** | Cada materia con sus preguntas, exámenes y apuntes, más el porcentaje de aciertos. |
@@ -159,6 +160,23 @@ Perla es la compañera de estudio (el guepardo rosa del logo). Se abre desde la 
 - **Mis notas**: en el panel de la derecha se ven las notas de los exámenes y el promedio. También se pueden cargar o cambiar desde el detalle de cada plan (“Poner nota”).
 
 > **Sobre la IA**: la app es local y Perla responde con tus datos reales (planes, notas, horario, apuntes), sin conexión. Para preguntas libres hace falta conectar un modelo de IA con clave (OpenAI, Gemini, etc.) o un servidor; queda como próximo paso. Hoy la foto se guarda, pero no se interpreta sola.
+
+---
+
+## Planes: el camino de estudio
+
+Cada plan es un **camino** que se completa por estaciones:
+
+1. **Una estación por tema y por día**: reparte los temas entre hoy y la víspera del examen (o un tema por día si es “solo estudiar”).
+2. **Cada estación empieza con la lección**: muestra el apunte que coincida con el tema (con sus fotos) y, si no hay, te dice dónde escribirlo. Después vienen **12 preguntas** de esa materia, priorizando las del tema.
+3. **Se completa al terminar las preguntas**: queda el puntaje, se marca el día en “Para hoy” y avanza el camino.
+4. **La última estación es el repaso general**: todas las preguntas del plan, para comprobar si ya se lo sabe.
+
+Si la materia tiene pocas preguntas cargadas, la estación repite algunas para llegar a 12; cargando más preguntas en Materias, cada estación varía más.
+
+| Planes | Camino | Lección |
+| --- | --- | --- |
+| ![Lista de planes con su progreso](capturas/planes.png) | ![Camino con estaciones y repaso final](capturas/camino.png) | ![Lección de una estación con sus preguntas](capturas/leccion.png) |
 
 ---
 

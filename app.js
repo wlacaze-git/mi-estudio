@@ -2,13 +2,13 @@
 import {
   getState, load, replaceState, subscribe, subjectById,
   update, uid, achievements, addXp, levelInfo,
-  activeProfile, activeProfileId, createProfile, deleteProfile, pastPlansWithoutGrade, profileStateOf,
-  renameProfile, switchProfile, upcomingExams,
+  activeProfile, activeProfileId, createProfile, deleteProfile, pastPlansWithoutGrade, planStations,
+  profileStateOf, renameProfile, switchProfile, upcomingExams,
 } from './js/store.js';
 import { addDays, buildICS, fmtLong, todayISO, diffDays } from './js/dates.js';
 import {
   buildSession, answerCurrent, currentItem, nextQuestion, buildAttempt,
-  buildFlashcards, currentCard, answerCard, cardSummary,
+  buildFlashcards, currentCard, answerCard, cardSummary, buildStationSession,
 } from './js/quiz.js';
 import {
   esc, toast, openModal, closeModal, isModalOpen, downloadFile,
@@ -97,6 +97,17 @@ function render() {
     html = views.renderQuiz(quizSession, current);
   } else if (route.view === 'tarjetas') {
     html = views.renderFlashcards(cardsSession, current);
+  } else if (route.view === 'planes') {
+    html = views.renderPlanes(current, { today });
+  } else if (route.view === 'camino' && route.planId) {
+    const plan = current.exams.find((item) => item.id === route.planId);
+    html = plan ? views.renderCamino(current, plan, { today }) : views.renderPlanes(current, { today });
+  } else if (route.view === 'leccion' && route.planId && route.stationKey) {
+    const plan = current.exams.find((item) => item.id === route.planId);
+    const station = plan ? planStations(plan, current, today).stations.find((item) => item.key === route.stationKey) : null;
+    html = plan && station
+      ? views.renderLeccion(current, plan, station, { today })
+      : views.renderPlanes(current, { today });
   } else if (route.view === 'perla') {
     html = views.renderPerla(current, { draft: perlaDraft });
   } else if (route.view === 'perfil') {
@@ -113,7 +124,10 @@ function render() {
     if (box) box.scrollTop = box.scrollHeight;
   }
 
-  const activeView = route.view === 'subject' ? 'materias' : route.view === 'tarjetas' ? 'practica' : route.view;
+  const activeView = route.view === 'subject' ? 'materias'
+    : route.view === 'tarjetas' ? 'practica'
+      : (route.view === 'camino' || route.view === 'leccion') || (route.view === 'quiz' && quizSession && quizSession.station) ? 'planes'
+        : route.view;
   for (const btn of navButtons) {
     btn.classList.toggle('is-active', btn.dataset.view === activeView);
   }
@@ -410,6 +424,14 @@ function recordIfNeeded() {
     }
     if (!s.daysStudied.includes(attempt.date)) s.daysStudied.push(attempt.date);
     s.xp = (s.xp || 0) + 15;
+    if (quizSession.station) {
+      s.planDone[quizSession.station.key] = true;
+      const plan = s.exams.find((item) => item.id === quizSession.station.planId);
+      if (plan) {
+        plan.scores = plan.scores || {};
+        plan.scores[quizSession.station.key] = attempt.percent;
+      }
+    }
   });
 }
 
@@ -583,6 +605,17 @@ document.addEventListener('click', (event) => {
       if (exam) { closeModal(); openPlanWizard(exam); }
       return;
     }
+    case 'open-camino':
+      go({ view: 'camino', planId: el.dataset.id });
+      return;
+    case 'open-station': {
+      const plan = getState().exams.find((item) => item.id === el.dataset.plan);
+      if (!plan) return;
+      const station = planStations(plan).stations.find((item) => item.key === el.dataset.key);
+      if (!station) return;
+      go({ view: 'leccion', planId: plan.id, stationKey: station.key });
+      return;
+    }
     case 'open-plan': {
       const plan = getState().exams.find((e) => e.id === el.dataset.id);
       if (plan) showModal('plan-view', { plan });
@@ -712,6 +745,20 @@ document.addEventListener('click', (event) => {
       if (!quizSession) return;
       const ids = quizSession.items.filter((i) => !i.ok).map((i) => i.question.id);
       startQuiz({ questionIds: ids, mode: 'practice' });
+      return;
+    }
+    case 'start-station': {
+      const plan = getState().exams.find((item) => item.id === el.dataset.plan);
+      if (!plan) return;
+      const station = planStations(plan).stations.find((item) => item.key === el.dataset.key);
+      if (!station) return;
+      const session = buildStationSession(plan, station, { count: 12 });
+      if (!session) {
+        toast('No hay preguntas de esta materia todavía', 'warn');
+        return;
+      }
+      quizSession = session;
+      go({ view: 'quiz' });
       return;
     }
     case 'start-flashcards':

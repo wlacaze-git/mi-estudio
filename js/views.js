@@ -7,10 +7,10 @@ import {
 import {
   achievements, activeProfileId, classesOfDay, classesToday, examsSorted, levelInfo,
   listProfiles, masteryOf, notesOf, notesSorted, pastExams, questionsOf, scheduleSorted,
-  streak, studyPlan, studyStats, subjectById, subjectsSorted, tasksForDate, undatedPlans,
-  upcomingExams, wrongQuestions, xpForLevel,
+  planStations, streak, studyPlan, studyStats, subjectById, subjectsSorted, tasksForDate,
+  undatedPlans, upcomingExams, wrongQuestions, xpForLevel,
 } from './store.js';
-import { gradeMessage, cardSummary } from './quiz.js';
+import { gradeMessage, cardSummary, stationQuestions } from './quiz.js';
 import { ANIMALS, animalAvatar, animalForLevel, nextAnimalForLevel } from './animals.js';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -876,7 +876,7 @@ export function renderQuiz(session, state) {
   const subject = subjectById(item.question.subjectId, state);
   const answered = item.ok !== null;
   const progress = Math.round(((session.index + (answered ? 1 : 0)) / session.items.length) * 100);
-  const modeLabel = session.mode === 'mock' ? 'Examen simulado' : session.mode === 'review' ? 'Repaso' : 'Práctica';
+  const modeLabel = session.mode === 'mock' ? 'Examen simulado' : session.mode === 'review' ? 'Repaso' : session.mode === 'station' ? 'Estación' : 'Práctica';
 
   return `
     <section class="quiz" style="${subjectStyle(subject)}">
@@ -948,9 +948,12 @@ export function renderQuizResult(session, state) {
       </div>
 
       <div class="result-actions">
-        ${wrongItems.length ? `<button type="button" class="btn btn-primary" data-action="retry-wrong">Repetir las ${wrongItems.length} que fallé</button>` : ''}
-        <button type="button" class="btn btn-soft" data-action="start-quiz" data-subject="${esc(session.subjectId || '')}" data-mode="practice">Practicar de nuevo</button>
-        <button type="button" class="btn btn-plain" data-action="nav" data-view="practica">Volver a práctica</button>
+        ${session.station
+          ? `<button type="button" class="btn btn-primary" data-action="open-camino" data-id="${esc(session.station.planId)}">Volver al camino</button>
+             <button type="button" class="btn btn-soft" data-action="open-station" data-plan="${esc(session.station.planId)}" data-key="${esc(session.station.key)}">Repetir estación</button>`
+          : `${wrongItems.length ? `<button type="button" class="btn btn-primary" data-action="retry-wrong">Repetir las ${wrongItems.length} que fallé</button>` : ''}
+             <button type="button" class="btn btn-soft" data-action="start-quiz" data-subject="${esc(session.subjectId || '')}" data-mode="practice">Practicar de nuevo</button>
+             <button type="button" class="btn btn-plain" data-action="nav" data-view="practica">Volver a práctica</button>`}
       </div>
 
       <section class="card">
@@ -1904,4 +1907,160 @@ export function renderYouTubeForm() {
         <button type="submit" class="btn btn-primary">Agregar</button>
       </div>
     </form>`;
+}
+
+/* ========================= PLANES / CAMINO ========================= */
+
+function planStationData(state, plan, today) {
+  const data = planStations(plan, state, today);
+  return data.stations;
+}
+
+export function renderPlanes(state, { today }) {
+  const plans = [...examsSorted(state)].sort((a, b) => {
+    if (a.date && b.date) return a.date.localeCompare(b.date);
+    if (a.date) return -1;
+    if (b.date) return 1;
+    return a.title.localeCompare(b.title);
+  });
+
+  return `
+    <section class="page-head">
+      <div>
+        <p class="eyebrow">Planes</p>
+        <h1 class="page-title">Tus caminos de estudio</h1>
+        <p class="muted small">Cada plan es un camino con estaciones: una lección y preguntas por día, y un repaso final.</p>
+      </div>
+      <button type="button" class="btn btn-primary" data-action="add-exam">+ Nuevo plan</button>
+    </section>
+
+    ${plans.length
+      ? `<div class="plan-grid">${plans.map((plan) => {
+          const subject = subjectById(plan.subjectId, state);
+          const kind = planKind(plan);
+          const stations = planStationData(state, plan, today);
+          const done = stations.filter((station) => station.done).length;
+          const percent = stations.length ? Math.round((done / stations.length) * 100) : 0;
+          return `
+            <div class="plan-card" style="${subjectStyle(subject)}" data-action="open-camino" data-id="${esc(plan.id)}" role="button" tabindex="0">
+              <div class="plan-card-top">
+                <span class="kind-chip">${kind.emoji} ${esc(kind.label)}</span>
+                <span class="muted small">${plan.date ? esc(relativeLabel(plan.date, today)) : 'sin fecha'}</span>
+              </div>
+              <h3>${esc(plan.title)}</h3>
+              <p class="muted small">${esc(subject ? subject.name : 'Materia')} · ${done}/${stations.length} estaciones</p>
+              <div class="path-dots">
+                ${stations.map((station) => `<i class="${station.done ? 'is-done' : ''} ${station.final ? 'is-final' : ''}"></i>`).join('')}
+              </div>
+              <div class="plan-card-foot">
+                <span class="plan-percent">${percent}%</span>
+                <span class="link-hint">Abrir camino ›</span>
+              </div>
+            </div>`;
+        }).join('')}</div>`
+      : `<section class="card">${emptyState({
+          emoji: '🗺️',
+          title: 'Todavía no hay planes',
+          text: 'Creá un plan de estudio y te armamos un camino con estaciones diarias hasta el examen.',
+          actionLabel: 'Crear el primero',
+          actionAttrs: 'data-action="add-exam"',
+        })}</section>`}
+  `;
+}
+
+export function renderCamino(state, plan, { today }) {
+  const subject = subjectById(plan.subjectId, state);
+  const kind = planKind(plan);
+  const stations = planStationData(state, plan, today);
+  const done = stations.filter((station) => station.done).length;
+  const percent = stations.length ? Math.round((done / stations.length) * 100) : 0;
+  const currentIndex = stations.findIndex((station) => !station.done);
+
+  return `
+    <button type="button" class="back" data-action="nav" data-view="planes">← Todos los planes</button>
+
+    <section class="camino-head" style="${subjectStyle(subject)}">
+      <div class="camino-top">
+        <span class="kind-chip">${kind.emoji} ${esc(kind.label)}</span>
+        ${subjectChip(subject)}
+        <span class="countdown">${plan.date ? esc(countdownLabel(plan.date, today)) : 'a tu ritmo'}</span>
+      </div>
+      <h1>${esc(plan.title)}</h1>
+      <p class="muted small">${plan.date ? esc(fmtLong(plan.date)) : 'Sin fecha'} · ${done}/${stations.length} estaciones completadas</p>
+      <div class="camino-progress"><i style="width:${percent}%"></i></div>
+      <div class="camino-actions">
+        <button type="button" class="btn btn-plain btn-small" data-action="edit-exam" data-id="${esc(plan.id)}">Editar plan</button>
+        ${plan.date ? `<button type="button" class="btn btn-plain btn-small" data-action="edit-grade" data-id="${esc(plan.id)}">${Number.isFinite(plan.grade) ? 'Nota: ' + plan.grade : 'Poner nota'}</button>` : ''}
+        <button type="button" class="btn btn-plain btn-small" data-action="start-quiz" data-subject="${esc(plan.subjectId)}">Práctica libre</button>
+      </div>
+    </section>
+
+    <ol class="path">
+      ${stations.map((station, index) => {
+        const count = stationQuestions(plan, station).length ? 12 : 0;
+        const isCurrent = index === currentIndex;
+        return `
+          <li class="path-station ${station.done ? 'is-done' : ''} ${isCurrent ? 'is-current' : ''} ${station.final ? 'is-final' : ''}">
+            <span class="path-dot">${station.done ? '✓' : index + 1}</span>
+            <div class="path-card" style="${subjectStyle(subject)}">
+              <div class="path-head">
+                <span class="path-date">${station.final ? 'Estación final' : esc(fmtShort(station.date))}</span>
+                <span class="path-count">${count} preguntas</span>
+              </div>
+              <strong>${esc(station.topic)}</strong>
+              <small>${station.final ? 'Repaso de todo: todas las preguntas del plan.' : 'Primero la lección, después las preguntas.'}</small>
+              <div class="path-actions">
+                <button type="button" class="btn ${station.done ? 'btn-plain' : 'btn-soft'} btn-small" data-action="open-station" data-plan="${esc(plan.id)}" data-key="${esc(station.key)}">${station.done ? 'Repetir' : 'Empezar'}</button>
+                ${Number.isFinite(station.score) ? `<span class="pill">${station.score}%</span>` : ''}
+              </div>
+            </div>
+          </li>`;
+      }).join('')}
+    </ol>
+  `;
+}
+
+function lessonNotes(state, plan, station) {
+  const notes = notesOf(plan.subjectId, state);
+  if (station.final) return notes;
+  const topic = String(station.topic || '').toLowerCase();
+  const matching = notes.filter((note) => {
+    const text = `${note.title} ${note.body}`.toLowerCase();
+    return topic && (text.includes(topic) || topic.includes(note.title.toLowerCase()));
+  });
+  return matching.length ? matching : [];
+}
+
+export function renderLeccion(state, plan, station, { today }) {
+  const subject = subjectById(plan.subjectId, state);
+  const notes = lessonNotes(state, plan, station);
+  const available = stationQuestions(plan, station).length;
+  const count = available ? 12 : 0;
+  return `
+    <button type="button" class="back" data-action="open-camino" data-id="${esc(plan.id)}">← Volver al camino</button>
+
+    <section class="leccion-head" style="${subjectStyle(subject)}">
+      <p class="eyebrow">${station.final ? 'Estación final' : 'Estación ' + (station.index + 1)} · ${esc(fmtShort(station.date))}</p>
+      <h1>${esc(station.topic)}</h1>
+      <p class="muted small">${esc(subject ? subject.name : '')} · ${count} preguntas para practicar</p>
+    </section>
+
+    <section class="card leccion-card">
+      <h2 class="card-title">Lección</h2>
+      ${notes.length
+        ? notes.map((note) => `
+            <article class="leccion-note">
+              <h3>${esc(note.title)}</h3>
+              ${note.body ? `<p>${esc(note.body)}</p>` : ''}
+              ${(note.images || []).length ? `<div class="note-photos">${note.images.map((photo) => `<button type="button" class="note-photo" data-action="open-photo" data-image-id="${esc(photo.id)}"><img data-image-id="${esc(photo.id)}" alt="Foto del apunte"></button>`).join('')}</div>` : ''}
+            </article>`).join('')
+        : `<p class="muted">Todavía no hay un apunte de este tema. Podés escribirlo en <strong>Apuntes</strong> y aparece acá como lección.</p>
+           ${(plan.photos || []).length ? `<p class="muted small">Mientras tanto, mirá las fotos que cargaste en el plan:</p><div class="note-photos">${plan.photos.map((photo) => `<button type="button" class="note-photo" data-action="open-photo" data-image-id="${esc(photo.id)}"><img data-image-id="${esc(photo.id)}" alt="Foto del plan"></button>`).join('')}</div>` : ''}`}
+    </section>
+
+    <div class="leccion-actions">
+      <button type="button" class="btn btn-primary" data-action="start-station" data-plan="${esc(plan.id)}" data-key="${esc(station.key)}">Empezar las ${count} preguntas</button>
+      ${available && available < 10 ? `<span class="muted small">Hay ${available} preguntas cargadas: se repiten un poco para completar las 12. Si agregás más en Materias, la estación varía más.</span>` : ''}
+    </div>
+  `;
 }
