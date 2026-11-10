@@ -132,12 +132,32 @@ export function renderHoy(state, { today }) {
         actionAttrs: 'data-action="add-exam"',
       })}</section>`;
 
+  const tasksDone = tasks.filter((t) => t.done).length;
+  const todayPlans = (state.exams || []).filter((plan) => plan.date === today);
   const tasksPanel = `
     <section class="card">
       <div class="card-head">
         <h2 class="card-title">Para hoy</h2>
-        ${tasks.length ? `<span class="pill">${tasks.filter((t) => t.done).length}/${tasks.length}</span>` : ''}
+        ${todayPlans.length
+          ? `<span class="pill">${todayPlans.length} ${todayPlans.length === 1 ? 'examen/test' : 'exámenes/tests'}</span>`
+          : (tasks.length ? `<span class="pill">${tasksDone}/${tasks.length}</span>` : '')}
       </div>
+      ${todayPlans.length ? `
+        <ul class="today-plans">
+          ${todayPlans.map((plan) => {
+            const kind = planKind(plan);
+            const sub = subjectById(plan.subjectId, state);
+            return `
+              <li class="today-plan" data-action="open-plan" data-id="${esc(plan.id)}" role="button" tabindex="0">
+                <span class="kind-chip">${kind.emoji} ${esc(kind.label)} hoy</span>
+                <div class="today-plan-body">
+                  <strong>${esc(plan.title)}</strong>
+                  <small>${esc(sub ? sub.name : '')}</small>
+                </div>
+                <span class="icon-btn" aria-hidden="true">›</span>
+              </li>`;
+          }).join('')}
+        </ul>` : ''}
       ${tasks.length
         ? `<ul class="task-list">${tasks.map((task) => {
             const sub = subjectById(task.exam.subjectId, state);
@@ -152,8 +172,10 @@ export function renderHoy(state, { today }) {
                 </div>
               </li>`;
           }).join('')}</ul>`
-        : `<p class="muted small">Hoy no hay temas programados. Podés adelantar repaso o practicar libremente.</p>
-           <div class="card-actions"><button type="button" class="btn btn-soft" data-action="start-quiz" data-mode="mock">Hacer una práctica libre</button></div>`}
+        : (todayPlans.length
+          ? '<p class="muted small">Hoy tenés examen/test. No hay tareas de repaso cargadas: podés practicar con preguntas o tarjetas.</p>'
+          : `<p class="muted small">Hoy no hay nada agendado. Podés adelantar repaso o practicar libremente.</p>
+             <div class="card-actions"><button type="button" class="btn btn-soft" data-action="start-quiz" data-mode="mock">Hacer una práctica libre</button></div>`)}
     </section>`;
 
   const weekPanel = week.length

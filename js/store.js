@@ -331,7 +331,16 @@ export function wrongQuestions(subjectId, s = getState()) {
  */
 export function studyPlan(exam, s = getState(), today = todayISO()) {
   const topics = (exam.topics || []).filter(Boolean);
+  const noTopicsKey = `${exam.id}|sin-temas`;
+  const noTopicsItem = {
+    topic: `Preparar ${exam.title}`,
+    date: today,
+    key: noTopicsKey,
+    done: Boolean(s.planDone && s.planDone[noTopicsKey]),
+  };
+
   if (!exam.date) {
+    if (!topics.length) return { status: 'libre', items: [noTopicsItem] };
     const items = topics.map((topic, i) => {
       const date = addDays(today, i);
       const key = `${exam.id}|libre|${i}`;
@@ -339,9 +348,12 @@ export function studyPlan(exam, s = getState(), today = todayISO()) {
     });
     return { status: 'libre', items };
   }
+
   const days = diffDays(today, exam.date);
   if (days < 0) return { status: 'pasado', items: [] };
-  if (!topics.length) return { status: days === 0 ? 'hoy' : 'pendiente', items: [] };
+  if (!topics.length) {
+    return { status: days === 0 ? 'hoy' : 'pendiente', items: [noTopicsItem] };
+  }
 
   const buckets = Math.max(days, 1);
   const items = topics.map((topic, i) => {

@@ -468,6 +468,22 @@ input, textarea, select, button { font-family: inherit; }
   background: var(--subject, var(--primary));
 }
 
+.today-plans { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.today-plan {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #f9c6dd;
+  background: #fff0f7;
+  border-radius: 14px;
+  cursor: pointer;
+}
+.today-plan:hover { background: #ffe4f1; }
+.today-plan-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.today-plan-body strong { font-size: 0.95rem; }
+.today-plan-body small { color: var(--muted); font-size: 0.78rem; }
+
 /* --------------------------- Tareas --------------------------- */
 
 .task-list { display: flex; flex-direction: column; gap: 4px; }

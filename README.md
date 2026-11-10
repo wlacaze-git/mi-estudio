@@ -42,7 +42,7 @@ Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exáme
 
 | Sección | Para qué sirve |
 | --- | --- |
-| **Hoy** | Saludo, nivel y XP, racha de días estudiando, próximo examen con cuenta regresiva, **clases del día** y las tareas de repaso. |
+| **Hoy** | Saludo, nivel y XP, racha, próximo examen, **lo que agregaste en el calendario para hoy** y las tareas de repaso del día. |
 | **My Perla** | Chat con Perla: le hablás, le mandás fotos, apuntes y videos, y te responde con tus exámenes, notas, horario y apuntes. |
 | **Horario** | De lunes a viernes: materia, hora y **profesor/a** de cada clase, con **foto del horario** y opción de crear materias nuevas. |
 | **Calendario** | Vista mensual con los exámenes y tests marcados por materia. Al tocar un día se ve el detalle y se puede editar. |
@@ -55,6 +55,7 @@ Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exáme
 Extras:
 
 - **Plan de estudio guiado**: elegís para qué es (examen, test o solo estudiar), la asignatura y el tema; podés sumar fotos de apuntes o del libro; y si es examen o test, al final ponés la fecha. Los planes sin fecha quedan en “Solo por estudiar”.
+- **“Para hoy” conectado al calendario**: todo lo que cargás con fecha de hoy aparece arriba en la pantalla de inicio (con su tipo y materia, y se abre tocándolo), y cada plan suma sus tareas de repaso del día.
 - **Avatar animal**: el avatar es un animal rosa que va mejorando con el nivel: caracol → gato → perro → conejo → zorro → jirafa → león → **guepardo** (el mejor). Cambia solo al subir de nivel y en el perfil se ve la escalera completa.
 - **Horario simple**: solo lunes a viernes, con la materia, la hora y el profe. Podés **crear una materia nueva** desde el mismo formulario de la clase.
 - **Foto del horario e importación**: subís una foto del horario para consultarla, y con **“Importar texto”** podés pegar las clases (una por línea) para cargarlas todas de una vez; las materias que no existen se crean solas.
