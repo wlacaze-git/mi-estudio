@@ -7,13 +7,23 @@ import {
 import {
   achievements, activeProfileId, classesOfDay, classesToday, examsSorted, levelInfo,
   listProfiles, masteryOf, notesOf, notesSorted, pastExams, questionsOf, scheduleSorted,
-  streak, studyPlan, studyStats, subjectById, subjectsSorted, tasksForDate, upcomingExams,
-  wrongQuestions, xpForLevel,
+  streak, studyPlan, studyStats, subjectById, subjectsSorted, tasksForDate, undatedPlans,
+  upcomingExams, wrongQuestions, xpForLevel,
 } from './store.js';
 import { gradeMessage, cardSummary } from './quiz.js';
 import { ANIMALS, animalAvatar, animalForLevel, nextAnimalForLevel } from './animals.js';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+export const PLAN_KINDS = {
+  examen: { label: 'Examen', emoji: '📝', hint: 'Con fecha y cuenta regresiva' },
+  test: { label: 'Test', emoji: '🧪', hint: 'Un control corto con fecha' },
+  estudio: { label: 'Solo estudiar', emoji: '📚', hint: 'Sin fecha, a tu ritmo' },
+};
+
+export function planKind(plan) {
+  return PLAN_KINDS[plan && plan.type] || PLAN_KINDS.examen;
+}
 
 const ICON_EDIT = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>';
 const ICON_TRASH = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5M14 11v5"></path></svg>';
@@ -100,6 +110,7 @@ export function renderHoy(state, { today }) {
     ? `
       <section class="card exam-spotlight" style="${subjectStyle(nextSubject)}">
         <div class="card-head">
+          <span class="kind-chip">${planKind(next).emoji} ${esc(planKind(next).label)}</span>
           ${subjectChip(nextSubject)}
           <span class="countdown">${esc(countdownLabel(next.date, today))}</span>
         </div>
@@ -107,6 +118,7 @@ export function renderHoy(state, { today }) {
         <p class="muted">${esc(fmtLong(next.date))}</p>
         ${renderTopics(next, state)}
         <div class="card-actions">
+          <button type="button" class="btn btn-soft" data-action="open-plan" data-id="${esc(next.id)}">Ver plan</button>
           <button type="button" class="btn btn-soft" data-action="start-quiz" data-subject="${esc(next.subjectId)}">Practicar</button>
           <button type="button" class="btn btn-plain" data-action="share-exam" data-id="${esc(next.id)}">Compartir</button>
           <button type="button" class="btn btn-plain" data-action="export-ics">A la agenda</button>
@@ -200,10 +212,39 @@ export function renderHoy(state, { today }) {
   return `
     ${hero}
     <div class="grid-2">${nextPanel}${tasksPanel}</div>
+    ${renderFreePlans(state)}
     ${renderTodayClasses(state, { today })}
     ${weekPanel}
     ${progressPanel}
   `;
+}
+
+function renderFreePlans(state) {
+  const plans = undatedPlans(state);
+  if (!plans.length) return '';
+  return `
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Solo por estudiar</h2>
+        <button type="button" class="btn btn-plain btn-small" data-action="add-exam">+ Nuevo plan</button>
+      </div>
+      <ul class="agenda">
+        ${plans.map((plan) => {
+          const subject = subjectById(plan.subjectId, state);
+          const planData = studyPlan(plan, state);
+          const done = planData.items.filter((item) => item.done).length;
+          return `
+            <li class="agenda-item" style="${subjectStyle(subject)}" data-action="open-plan" data-id="${esc(plan.id)}" role="button" tabindex="0">
+              <div class="agenda-date"><strong>${planData.items.length}</strong><span>temas</span></div>
+              <div class="agenda-body">
+                <span class="agenda-title">${esc(plan.title)}</span>
+                <span class="agenda-meta">${esc(subject ? subject.name : 'Materia')} · ${done}/${planData.items.length} repasados · sin fecha</span>
+              </div>
+              <span class="icon-btn" aria-hidden="true">›</span>
+            </li>`;
+        }).join('')}
+      </ul>
+    </section>`;
 }
 
 function renderTopics(exam, state) {
@@ -230,6 +271,7 @@ export function renderCalendario(state, { today, month }) {
   const cells = monthMatrix(month.year, month.month);
   const byDate = new Map();
   for (const exam of state.exams) {
+    if (!exam.date) continue;
     if (!byDate.has(exam.date)) byDate.set(exam.date, []);
     byDate.get(exam.date).push(exam);
   }
@@ -242,7 +284,7 @@ export function renderCalendario(state, { today, month }) {
         <p class="eyebrow">Calendario</p>
         <h1 class="page-title">Tus exámenes</h1>
       </div>
-      <button type="button" class="btn btn-primary" data-action="add-exam">+ Agregar examen</button>
+      <button type="button" class="btn btn-primary" data-action="add-exam">+ Nuevo plan</button>
     </section>
 
     <section class="card calendar-card">
@@ -289,11 +331,12 @@ export function renderCalendario(state, { today, month }) {
 
     <section class="card">
       <div class="card-head">
-        <h2 class="card-title">Próximos exámenes</h2>
+        <h2 class="card-title">Próximos exámenes y tests</h2>
       </div>
       ${upcoming.length
         ? `<ul class="agenda">${upcoming.map((exam) => {
             const sub = subjectById(exam.subjectId, state);
+            const kind = planKind(exam);
             return `
               <li class="agenda-item" style="${subjectStyle(sub)}">
                 <div class="agenda-date">
@@ -302,9 +345,9 @@ export function renderCalendario(state, { today, month }) {
                 </div>
                 <div class="agenda-body">
                   <span class="agenda-title">${esc(exam.title)}</span>
-                  <span class="agenda-meta">${esc(sub ? sub.name : '')} · ${esc(relativeLabel(exam.date, today))}</span>
+                  <span class="agenda-meta">${kind.emoji} ${esc(kind.label)} · ${esc(sub ? sub.name : '')} · ${esc(relativeLabel(exam.date, today))}</span>
                 </div>
-                <button type="button" class="btn btn-plain btn-small" data-action="start-quiz" data-subject="${esc(exam.subjectId)}">Practicar</button>
+                <button type="button" class="btn btn-plain btn-small" data-action="open-plan" data-id="${esc(exam.id)}">Ver plan</button>
               </li>`;
           }).join('')}</ul>`
         : `<p class="muted">No hay exámenes futuros cargados.</p>`}
@@ -348,6 +391,7 @@ export function renderDaySheet(state, date) {
           return `
             <li class="sheet-item" style="${subjectStyle(sub)}">
               <div class="sheet-top">
+                <span class="kind-chip">${planKind(exam).emoji} ${esc(planKind(exam).label)}</span>
                 ${subjectChip(sub)}
                 <span class="countdown">${esc(countdownLabel(exam.date))}</span>
               </div>
@@ -356,7 +400,8 @@ export function renderDaySheet(state, date) {
               ${plan.items.length ? `<p class="muted small">Plan: ${done}/${plan.items.length} temas repasados</p>` : ''}
               ${exam.notes ? `<p class="note">${esc(exam.notes)}</p>` : ''}
               <div class="sheet-actions">
-                <button type="button" class="btn btn-soft btn-small" data-action="start-quiz" data-subject="${esc(exam.subjectId)}">Practicar</button>
+                <button type="button" class="btn btn-soft btn-small" data-action="open-plan" data-id="${esc(exam.id)}">Ver plan</button>
+                <button type="button" class="btn btn-plain btn-small" data-action="start-quiz" data-subject="${esc(exam.subjectId)}">Practicar</button>
                 <button type="button" class="btn btn-plain btn-small" data-action="edit-exam" data-id="${esc(exam.id)}">Editar</button>
                 <button type="button" class="btn btn-plain btn-small" data-action="share-exam" data-id="${esc(exam.id)}">Compartir</button>
                 <button type="button" class="btn btn-danger btn-small" data-action="delete-exam" data-id="${esc(exam.id)}">Borrar</button>
@@ -365,7 +410,7 @@ export function renderDaySheet(state, date) {
         }).join('')}</ul>`
       : `<p class="muted">Ese día no hay exámenes.</p>`}
     <div class="modal-foot">
-      <button type="button" class="btn btn-primary btn-block" data-action="add-exam" data-date="${esc(date)}">+ Agregar examen este día</button>
+      <button type="button" class="btn btn-primary btn-block" data-action="add-exam" data-date="${esc(date)}">+ Agregar plan este día</button>
     </div>`;
 }
 
@@ -616,17 +661,22 @@ export function renderSubjectDetail(state, subject) {
 
     ${exams.length ? `
       <section class="card">
-        <h2 class="card-title">Exámenes</h2>
+        <h2 class="card-title">Planes de estudio</h2>
         <ul class="agenda">
-          ${exams.map((exam) => `
-            <li class="agenda-item">
-              <div class="agenda-date"><strong>${esc(String(Number(exam.date.slice(8, 10))))}</strong><span>${esc(fmtShort(exam.date).split(' ').slice(1).join(' '))}</span></div>
-              <div class="agenda-body">
-                <span class="agenda-title">${esc(exam.title)}</span>
-                <span class="agenda-meta">${esc(relativeLabel(exam.date))}</span>
-              </div>
-              <button type="button" class="btn btn-plain btn-small" data-action="edit-exam" data-id="${esc(exam.id)}">Editar</button>
-            </li>`).join('')}
+          ${exams.map((exam) => {
+            const kind = planKind(exam);
+            return `
+              <li class="agenda-item">
+                ${exam.date
+                  ? `<div class="agenda-date"><strong>${esc(String(Number(exam.date.slice(8, 10))))}</strong><span>${esc(fmtShort(exam.date).split(' ').slice(1).join(' '))}</span></div>`
+                  : `<div class="agenda-date"><strong>${esc(kind.emoji)}</strong><span>sin fecha</span></div>`}
+                <div class="agenda-body">
+                  <span class="agenda-title">${esc(exam.title)}</span>
+                  <span class="agenda-meta">${kind.emoji} ${esc(kind.label)}${exam.date ? ' · ' + esc(relativeLabel(exam.date)) : ' · a tu ritmo'}</span>
+                </div>
+                <button type="button" class="btn btn-plain btn-small" data-action="open-plan" data-id="${esc(exam.id)}">Ver plan</button>
+              </li>`;
+          }).join('')}
         </ul>
       </section>` : ''}
 
@@ -1308,46 +1358,142 @@ export function renderAjustes(state) {
 
 /* ============================ FORMULARIOS ============================ */
 
-export function renderExamForm(state, { exam = null, date = '' } = {}) {
-  const editing = Boolean(exam);
-  const value = exam || { subjectId: state.subjects[0]?.id || '', title: '', date: date || todayISO(), topics: [], notes: '' };
+export function renderPlanWizard(state, draft) {
+  const step = draft.step || 1;
+  const kind = PLAN_KINDS[draft.type] || PLAN_KINDS.examen;
+  const subject = subjectById(draft.subjectId, state);
+  const steps = `<div class="wizard-steps">${[1, 2, 3].map((n) => `<span class="${n === step ? 'is-active' : ''} ${n < step ? 'is-done' : ''}">${n}</span>`).join('')}</div>`;
+  const head = `
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow">${draft.id ? 'Editar' : 'Nuevo'}</p>
+        <h2>${draft.id ? 'Editar plan' : 'Plan de estudio'}</h2>
+      </div>
+      <button type="button" class="icon-btn" data-action="close-modal" aria-label="Cerrar">✕</button>
+    </div>`;
+
+  if (step === 1) {
+    return `${head}${steps}
+      <p class="wizard-question">¿Para qué es este plan?</p>
+      <div class="type-grid">
+        ${Object.entries(PLAN_KINDS).map(([id, item]) => `
+          <button type="button" class="type-card ${draft.type === id ? 'is-selected' : ''}" data-action="plan-type" data-type="${id}">
+            <span class="type-emoji">${item.emoji}</span>
+            <strong>${esc(item.label)}</strong>
+            <small>${esc(item.hint)}</small>
+          </button>`).join('')}
+      </div>
+      <p class="muted small">Después elegís la materia y el tema. Si es examen o test, al final ponés la fecha.</p>`;
+  }
+
+  if (step === 2) {
+    return `${head}${steps}
+      <p class="wizard-question">¿De qué materia y qué tema?</p>
+      <form class="form" data-form="plan-step2">
+        <label class="field">
+          <span>Asignatura</span>
+          <select name="subjectId" required>
+            ${state.subjects.map((s) => `<option value="${esc(s.id)}" ${s.id === draft.subjectId ? 'selected' : ''}>${esc(s.emoji || '📘')} ${esc(s.name)}</option>`).join('')}
+          </select>
+        </label>
+        <label class="field">
+          <span>Tema de estudio</span>
+          <input type="text" name="title" value="${esc(draft.title || '')}" placeholder="Ej.: Fracciones y ecuaciones" required maxlength="80">
+        </label>
+        <label class="field">
+          <span>Temas para repartir (opcional)</span>
+          <textarea name="topics" rows="3" placeholder="Uno por línea. Si lo dejás vacío usamos el tema de arriba.">${esc(draft.topicsText || '')}</textarea>
+        </label>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-plain" data-action="plan-back">Volver</button>
+          <div class="foot-right">
+            <button type="button" class="btn btn-plain" data-action="close-modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Siguiente</button>
+          </div>
+        </div>
+      </form>`;
+  }
+
+  const dated = draft.type !== 'estudio';
+  return `${head}${steps}
+    <p class="wizard-question">${dated ? '¿Cuándo es?' : '¿Le agregás fotos?'}</p>
+    <form class="form" data-form="plan-step3" data-id="${esc(draft.id || '')}">
+      ${dated
+        ? `<label class="field"><span>Fecha</span><input type="date" name="date" value="${esc(draft.date || '')}" required></label>`
+        : `<p class="muted small">Este plan no tiene fecha: lo vas a encontrar en “Solo por estudiar” y en las tareas de cada día.</p>`}
+      <div class="field">
+        <span>Fotos (apuntes o fotos del libro)</span>
+        <div class="photo-grid" data-photo-grid>
+          ${(draft.images || []).map((id) => `
+            <figure class="photo-thumb" data-id="${esc(id)}">
+              <img data-image-id="${esc(id)}" alt="Foto del plan">
+              <button type="button" class="photo-remove" data-action="remove-plan-photo" data-id="${esc(id)}" aria-label="Quitar foto">✕</button>
+            </figure>`).join('')}
+        </div>
+        <label class="photo-add">
+          <input type="file" accept="image/*" multiple data-role="plan-photo" hidden>
+          <span class="btn btn-soft btn-small">📷 Agregar foto</span>
+        </label>
+        <small class="hint">Podés sacar una foto en el momento o elegir de la galería.</small>
+      </div>
+      <div class="plan-summary">
+        <span>${kind.emoji} ${esc(kind.label)}</span>
+        <span>${esc(subject ? subject.name : 'Materia')}</span>
+        <span>${draft.topicsCount || 0} tema(s)</span>
+        ${dated ? '' : '<span>sin fecha</span>'}
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-plain" data-action="plan-back">Volver</button>
+        <div class="foot-right">
+          <button type="button" class="btn btn-plain" data-action="close-modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">${draft.id ? 'Guardar cambios' : 'Crear plan'}</button>
+        </div>
+      </div>
+    </form>`;
+}
+
+export function renderPlanView(state, plan) {
+  const kind = planKind(plan);
+  const subject = subjectById(plan.subjectId, state);
+  const planData = studyPlan(plan, state);
+  const photos = plan.photos || [];
+  const done = planData.items.filter((item) => item.done).length;
   return `
     <div class="modal-head">
       <div>
-        <p class="eyebrow">${editing ? 'Editar' : 'Nuevo'}</p>
-        <h2>${editing ? 'Editar examen' : 'Agregar examen'}</h2>
+        <p class="eyebrow">${kind.emoji} ${esc(kind.label)}</p>
+        <h2>${esc(plan.title)}</h2>
       </div>
       <button type="button" class="icon-btn" data-action="close-modal" aria-label="Cerrar">✕</button>
     </div>
-    <form class="form" data-form="exam" data-id="${esc(exam ? exam.id : '')}">
-      <label class="field">
-        <span>Materia</span>
-        <select name="subjectId" required>
-          ${state.subjects.map((s) => `<option value="${esc(s.id)}" ${s.id === value.subjectId ? 'selected' : ''}>${esc(s.emoji || '📘')} ${esc(s.name)}</option>`).join('')}
-        </select>
-      </label>
-      <label class="field">
-        <span>¿Qué es? (título)</span>
-        <input type="text" name="title" value="${esc(value.title)}" placeholder="Ej.: Examen de fracciones" required maxlength="80">
-      </label>
-      <label class="field">
-        <span>Fecha</span>
-        <input type="date" name="date" value="${esc(value.date)}" required>
-      </label>
-      <label class="field">
-        <span>Temas que entran</span>
-        <textarea name="topics" rows="3" placeholder="Un tema por línea">${esc((value.topics || []).join('\n'))}</textarea>
-        <small class="hint">Con los temas armamos el plan de repaso hasta el día del examen.</small>
-      </label>
-      <label class="field">
-        <span>Notas (opcional)</span>
-        <textarea name="notes" rows="2" placeholder="Traer calculadora, avisarle a la profe, etc.">${esc(value.notes || '')}</textarea>
-      </label>
-      <div class="modal-foot">
-        <button type="button" class="btn btn-plain" data-action="close-modal">Cancelar</button>
-        <button type="submit" class="btn btn-primary">${editing ? 'Guardar cambios' : 'Agregar examen'}</button>
+    <div class="plan-meta">
+      ${subjectChip(subject)}
+      ${plan.date ? `<span class="countdown">${esc(countdownLabel(plan.date))}</span>` : '<span class="pill">Sin fecha</span>'}
+    </div>
+    ${plan.date ? `<p class="muted small">${esc(fmtLong(plan.date))}</p>` : ''}
+    ${plan.topics && plan.topics.length ? `
+      <div class="topics">
+        <div class="topics-head">
+          <span class="label">Temas</span>
+          <span class="muted small">${done}/${planData.items.length} repasados</span>
+        </div>
+        <ul class="topic-list">${plan.topics.map((topic) => `<li>${esc(topic)}</li>`).join('')}</ul>
+      </div>` : ''}
+    ${plan.notes ? `<p class="note">${esc(plan.notes)}</p>` : ''}
+    ${photos.length ? `
+      <div class="note-photos">
+        ${photos.map((photo) => `
+          <button type="button" class="note-photo" data-action="open-photo" data-image-id="${esc(photo.id)}" aria-label="Ver foto completa">
+            <img data-image-id="${esc(photo.id)}" alt="Foto del plan" loading="lazy">
+          </button>`).join('')}
+      </div>` : ''}
+    <div class="modal-foot">
+      <button type="button" class="btn btn-danger btn-small" data-action="delete-exam" data-id="${esc(plan.id)}">Borrar</button>
+      <div class="foot-right">
+        <button type="button" class="btn btn-plain" data-action="start-quiz" data-subject="${esc(plan.subjectId)}">Practicar</button>
+        <button type="button" class="btn btn-primary" data-action="edit-exam" data-id="${esc(plan.id)}">Editar</button>
       </div>
-    </form>`;
+    </div>`;
 }
 
 export function renderSubjectForm(state, { subject = null } = {}) {

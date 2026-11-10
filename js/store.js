@@ -144,7 +144,13 @@ function migrate(raw) {
   const base = seedState();
   const next = { ...base, ...raw };
   next.subjects = Array.isArray(raw.subjects) ? raw.subjects : base.subjects;
-  next.exams = Array.isArray(raw.exams) ? raw.exams : [];
+  next.exams = (Array.isArray(raw.exams) ? raw.exams : []).map((plan) => ({
+    ...plan,
+    type: plan.type || 'examen',
+    date: plan.date || '',
+    topics: Array.isArray(plan.topics) ? plan.topics : [],
+    photos: Array.isArray(plan.photos) ? plan.photos : [],
+  }));
   next.questions = Array.isArray(raw.questions) ? raw.questions : [];
   next.notes = (Array.isArray(raw.notes) ? raw.notes : []).map((note) => ({
     ...note,
@@ -234,12 +240,20 @@ export function examsSorted(s = getState()) {
   return [...s.exams].sort((a, b) => (a.date === b.date ? a.title.localeCompare(b.title) : a.date.localeCompare(b.date)));
 }
 
+export function datedPlans(s = getState()) {
+  return examsSorted(s).filter((plan) => Boolean(plan.date));
+}
+
+export function undatedPlans(s = getState()) {
+  return examsSorted(s).filter((plan) => !plan.date);
+}
+
 export function upcomingExams(s = getState(), today = todayISO()) {
-  return examsSorted(s).filter((e) => diffDays(today, e.date) >= 0);
+  return datedPlans(s).filter((plan) => diffDays(today, plan.date) >= 0);
 }
 
 export function pastExams(s = getState(), today = todayISO()) {
-  return examsSorted(s).filter((e) => diffDays(today, e.date) < 0).reverse();
+  return datedPlans(s).filter((plan) => diffDays(today, plan.date) < 0).reverse();
 }
 
 export function questionsOf(subjectId, s = getState()) {
@@ -299,8 +313,16 @@ export function wrongQuestions(subjectId, s = getState()) {
  * Devuelve items {topic, date, key, done}.
  */
 export function studyPlan(exam, s = getState(), today = todayISO()) {
-  const days = diffDays(today, exam.date);
   const topics = (exam.topics || []).filter(Boolean);
+  if (!exam.date) {
+    const items = topics.map((topic, i) => {
+      const date = addDays(today, i);
+      const key = `${exam.id}|libre|${i}`;
+      return { topic, date, key, done: Boolean(s.planDone && s.planDone[key]) };
+    });
+    return { status: 'libre', items };
+  }
+  const days = diffDays(today, exam.date);
   if (days < 0) return { status: 'pasado', items: [] };
   if (!topics.length) return { status: days === 0 ? 'hoy' : 'pendiente', items: [] };
 
@@ -317,7 +339,7 @@ export function studyPlan(exam, s = getState(), today = todayISO()) {
 /** Tareas de estudio para una fecha concreta, de todos los exámenes futuros. */
 export function tasksForDate(iso, s = getState()) {
   const out = [];
-  for (const exam of upcomingExams(s)) {
+  for (const exam of [...upcomingExams(s), ...undatedPlans(s)]) {
     const plan = studyPlan(exam, s);
     for (const item of plan.items) {
       if (item.date === iso) out.push({ ...item, exam });

@@ -32,6 +32,7 @@ let calMonth = { year: new Date().getFullYear(), month: new Date().getMonth() };
 let modal = null;
 let recordedSessions = new Set();
 let noteDraft = null;
+let planDraft = null;
 
 /* ----------------------------- Render ----------------------------- */
 
@@ -133,9 +134,12 @@ function showModal(kind, payload = {}) {
   let html = '';
   let label = 'Ventana';
 
-  if (kind === 'exam') {
-    html = views.renderExamForm(current, payload);
-    label = payload.exam ? 'Editar examen' : 'Agregar examen';
+  if (kind === 'plan') {
+    html = views.renderPlanWizard(current, planDraft);
+    label = 'Plan de estudio';
+  } else if (kind === 'plan-view') {
+    html = views.renderPlanView(current, payload.plan);
+    label = 'Plan';
   } else if (kind === 'subject') {
     html = views.renderSubjectForm(current, payload);
     label = payload.subject ? 'Editar materia' : 'Agregar materia';
@@ -171,6 +175,7 @@ function showModal(kind, payload = {}) {
     hydrate(document.getElementById('modal-root'));
   }
   if (kind === 'note-view') hydrate(document.getElementById('modal-root'));
+  if (kind === 'plan' || kind === 'plan-view') hydrate(document.getElementById('modal-root'));
 }
 
 /* --------------------------- Fotos de apuntes --------------------------- */
@@ -190,6 +195,40 @@ function discardNoteDraft() {
   if (!noteDraft) return;
   const pending = [...noteDraft.newIds];
   noteDraft = null;
+  if (pending.length) deleteImages(pending);
+}
+
+/* ------------------------- Plan de estudio ------------------------- */
+
+function openPlanWizard(plan = null, { date = '' } = {}) {
+  const today = todayISO();
+  planDraft = {
+    id: plan ? plan.id : null,
+    step: 1,
+    type: plan ? plan.type || 'examen' : 'examen',
+    subjectId: plan ? plan.subjectId : ((getState().subjects[0] || {}).id || ''),
+    title: plan ? plan.title : '',
+    topicsText: plan ? (plan.topics || []).join('\n') : '',
+    topicsCount: plan ? (plan.topics || []).length : 0,
+    date: plan ? plan.date || '' : (date || addDays(today, 7)),
+    notes: plan ? plan.notes || '' : '',
+    images: plan ? (plan.photos || []).map((photo) => photo.id) : [],
+    newImages: new Set(),
+    removedImages: new Set(),
+  };
+  showModal('plan');
+}
+
+function renderPlanModal() {
+  const html = views.renderPlanWizard(getState(), planDraft);
+  openModal(html, { label: 'Plan de estudio' });
+  hydrate(document.getElementById('modal-root'));
+}
+
+function discardPlanDraft() {
+  if (!planDraft) return;
+  const pending = [...planDraft.newImages];
+  planDraft = null;
   if (pending.length) deleteImages(pending);
 }
 
@@ -292,11 +331,12 @@ function shareExam(examId) {
 
 function exportCalendar() {
   const current = getState();
-  if (!current.exams.length) {
-    toast('Todavía no hay exámenes para exportar', 'warn');
+  const dated = current.exams.filter((plan) => plan.date);
+  if (!dated.length) {
+    toast('Los planes sin fecha no van a la agenda', 'warn');
     return;
   }
-  const ics = buildICS(current.exams, current.subjects, 'Exámenes');
+  const ics = buildICS(dated, current.subjects, 'Exámenes');
   downloadFile('examenes.ics', ics, 'text/calendar');
   toast('Archivo .ics descargado. Abrilo para sumarlo al Calendario del iPad.');
 }
@@ -304,13 +344,15 @@ function exportCalendar() {
 async function exportBackup() {
   const current = getState();
   const images = {};
-  for (const note of current.notes || []) {
-    for (const photo of note.images || []) {
-      try {
-        const blob = await getImageBlob(photo.id);
-        if (blob) images[photo.id] = await blobToDataURL(blob);
-      } catch { /* si falta una foto, seguimos */ }
-    }
+  const photosToSave = [
+    ...(current.notes || []).flatMap((note) => note.images || []),
+    ...(current.exams || []).flatMap((plan) => plan.photos || []),
+  ];
+  for (const photo of photosToSave) {
+    try {
+      const blob = await getImageBlob(photo.id);
+      if (blob) images[photo.id] = await blobToDataURL(blob);
+    } catch { /* si falta una foto, seguimos */ }
   }
   const payload = { ...current, images, exportedAt: new Date().toISOString() };
   downloadFile(`mi-estudio-backup-${todayISO()}.json`, JSON.stringify(payload, null, 2));
@@ -397,12 +439,43 @@ document.addEventListener('click', (event) => {
       return;
     case 'add-exam': {
       if (isModalOpen()) closeModal();
-      showModal('exam', { date: el.dataset.date || todayISO() });
+      openPlanWizard(null, { date: el.dataset.date || '' });
       return;
     }
     case 'edit-exam': {
       const exam = getState().exams.find((e) => e.id === el.dataset.id);
-      if (exam) { closeModal(); showModal('exam', { exam }); }
+      if (exam) { closeModal(); openPlanWizard(exam); }
+      return;
+    }
+    case 'open-plan': {
+      const plan = getState().exams.find((e) => e.id === el.dataset.id);
+      if (plan) showModal('plan-view', { plan });
+      return;
+    }
+    case 'plan-type': {
+      if (!planDraft) return;
+      planDraft.type = el.dataset.type;
+      planDraft.step = 2;
+      renderPlanModal();
+      return;
+    }
+    case 'plan-back': {
+      if (!planDraft) return;
+      planDraft.step = Math.max(1, (planDraft.step || 1) - 1);
+      renderPlanModal();
+      return;
+    }
+    case 'remove-plan-photo': {
+      const id = el.dataset.id;
+      if (!planDraft) return;
+      planDraft.images = planDraft.images.filter((x) => x !== id);
+      if (planDraft.newImages.has(id)) {
+        planDraft.newImages.delete(id);
+        deleteImage(id);
+      } else {
+        planDraft.removedImages.add(id);
+      }
+      el.closest('.photo-thumb')?.remove();
       return;
     }
     case 'delete-exam':
@@ -645,7 +718,10 @@ document.addEventListener('click', (event) => {
       return;
     case 'confirm-delete-profile': {
       const target = profileStateOf(el.dataset.id);
-      const photos = ((target && target.notes) || []).flatMap((note) => (note.images || []).map((photo) => photo.id));
+      const photos = [
+        ...((target && target.notes) || []).flatMap((note) => (note.images || []).map((photo) => photo.id)),
+        ...((target && target.exams) || []).flatMap((plan) => (plan.photos || []).map((photo) => photo.id)),
+      ];
       const removed = deleteProfile(el.dataset.id);
       closeModal();
       if (photos.length) deleteImages(photos);
@@ -710,7 +786,10 @@ document.addEventListener('click', (event) => {
       });
       return;
     case 'confirm-reset': {
-      const photos = (getState().notes || []).flatMap((note) => (note.images || []).map((photo) => photo.id));
+      const photos = [
+        ...(getState().notes || []).flatMap((note) => (note.images || []).map((photo) => photo.id)),
+        ...(getState().exams || []).flatMap((plan) => (plan.photos || []).map((photo) => photo.id)),
+      ];
       update((s) => {
         s.student = '';
         s.subjects = [];
@@ -733,11 +812,15 @@ document.addEventListener('click', (event) => {
       toast('Listo, empezamos de cero');
       return;
     }
-    case 'confirm-delete-exam':
+    case 'confirm-delete-exam': {
+      const plan = getState().exams.find((e) => e.id === el.dataset.id);
+      const planPhotos = ((plan && plan.photos) || []).map((photo) => photo.id);
       update((s) => { s.exams = s.exams.filter((e) => e.id !== el.dataset.id); });
       closeModal();
-      toast('Examen borrado');
+      if (planPhotos.length) deleteImages(planPhotos);
+      toast('Plan borrado');
       return;
+    }
     case 'confirm-delete-question':
       update((s) => { s.questions = s.questions.filter((q) => q.id !== el.dataset.id); });
       closeModal();
@@ -901,6 +984,55 @@ document.addEventListener('submit', (event) => {
     return;
   }
 
+  if (kind === 'plan-step2') {
+    const subjectId = String(data.get('subjectId') || '');
+    const title = String(data.get('title') || '').trim();
+    const topicsText = String(data.get('topics') || '');
+    if (!subjectId || !title) { toast('Completá materia y tema', 'warn'); return; }
+    if (!planDraft) return;
+    planDraft.subjectId = subjectId;
+    planDraft.title = title;
+    planDraft.topicsText = topicsText;
+    const topics = topicsText.split('\n').map((line) => line.trim()).filter(Boolean);
+    planDraft.topicsCount = topics.length || 1;
+    planDraft.step = 3;
+    renderPlanModal();
+    return;
+  }
+
+  if (kind === 'plan-step3') {
+    if (!planDraft) return;
+    const id = form.dataset.id || planDraft.id;
+    const dated = planDraft.type !== 'estudio';
+    const date = String(data.get('date') || '').trim();
+    if (dated && !date) { toast('Poné la fecha del plan', 'warn'); return; }
+    let topics = planDraft.topicsText.split('\n').map((line) => line.trim()).filter(Boolean);
+    if (!topics.length) topics = [planDraft.title];
+    const payload = {
+      subjectId: planDraft.subjectId,
+      type: planDraft.type,
+      title: planDraft.title,
+      date: dated ? date : '',
+      topics,
+      notes: planDraft.notes || '',
+      photos: planDraft.images.map((imageId) => ({ id: imageId })),
+    };
+    const removed = [...planDraft.removedImages];
+    update((s) => {
+      if (id) {
+        const plan = s.exams.find((e) => e.id === id);
+        if (plan) Object.assign(plan, payload, { demo: false });
+      } else {
+        s.exams.push({ id: uid('plan'), ...payload });
+      }
+    });
+    planDraft = null;
+    closeModal();
+    if (removed.length) deleteImages(removed);
+    toast(id ? 'Plan actualizado' : 'Plan creado');
+    return;
+  }
+
   if (kind === 'name') {
     const student = String(data.get('student') || '').trim();
     update((s) => { s.student = student; });
@@ -942,13 +1074,17 @@ document.addEventListener('change', (event) => {
   }
 });
 
-// Fotos de un apunte: se achican, se guardan y se muestran al instante.
+// Fotos de apuntes y de planes: se achican, se guardan y se muestran al instante.
 document.addEventListener('change', async (event) => {
-  const input = event.target.closest('input[data-role="note-photo"]');
+  const noteInput = event.target.closest('input[data-role="note-photo"]');
+  const planInput = event.target.closest('input[data-role="plan-photo"]');
+  const input = noteInput || planInput;
   if (!input) return;
+  const isNote = Boolean(noteInput);
   const files = [...(input.files || [])];
   input.value = '';
-  if (!files.length || !noteDraft) return;
+  if (!files.length) return;
+  if (!(isNote ? noteDraft : planDraft)) return;
   const grid = document.querySelector('[data-photo-grid]');
   if (!grid) return;
 
@@ -964,12 +1100,18 @@ document.addEventListener('change', async (event) => {
     if (!file.type || !file.type.startsWith('image/')) continue;
     try {
       const saved = await saveFile(file);
-      if (!noteDraft) {
+      const draft = isNote ? noteDraft : planDraft;
+      if (!draft) {
         deleteImage(saved.id);
         continue;
       }
-      noteDraft.ids.push(saved.id);
-      noteDraft.newIds.add(saved.id);
+      if (isNote) {
+        draft.ids.push(saved.id);
+        draft.newIds.add(saved.id);
+      } else {
+        draft.images.push(saved.id);
+        draft.newImages.add(saved.id);
+      }
 
       const figure = document.createElement('figure');
       figure.className = 'photo-thumb';
@@ -979,12 +1121,12 @@ document.addEventListener('change', async (event) => {
       img.dataset.imageId = saved.id;
       img.dataset.loaded = '1';
       img.src = saved.url;
-      img.alt = 'Foto del apunte';
+      img.alt = isNote ? 'Foto del apunte' : 'Foto del plan';
 
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'photo-remove';
-      remove.dataset.action = 'remove-note-photo';
+      remove.dataset.action = isNote ? 'remove-note-photo' : 'remove-plan-photo';
       remove.dataset.id = saved.id;
       remove.setAttribute('aria-label', 'Quitar foto');
       remove.textContent = '✕';
@@ -999,7 +1141,7 @@ document.addEventListener('change', async (event) => {
   processing.remove();
 });
 
-document.addEventListener('modal:closed', () => discardNoteDraft());
+document.addEventListener('modal:closed', () => { discardNoteDraft(); discardPlanDraft(); });
 
 // Buscar dentro de los apuntes sin volver a dibujar (para no perder el foco).
 document.addEventListener('input', (event) => {
