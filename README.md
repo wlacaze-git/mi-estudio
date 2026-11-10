@@ -4,6 +4,8 @@
 
 **App publicada:** <https://wlacaze-git.github.io/mi-estudio/>
 
+> Estado del proyecto, pendientes y próximos pasos: [ESTADO.md](ESTADO.md).
+
 | Hoy | Perfil y logros |
 | --- | --- |
 | ![Pantalla de inicio](capturas/hoy.png) | ![Perfil con nivel, XP y logros](capturas/perfil.png) |
