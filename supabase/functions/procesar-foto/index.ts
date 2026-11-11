@@ -150,20 +150,29 @@ serve(async (req) => {
       },
     };
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-      {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+    const delays = [0, 1500, 4000];
+    let res;
+    let response = {};
+    for (let attempt = 0; attempt < delays.length; attempt += 1) {
+      if (delays[attempt]) await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+      res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": key },
         body: JSON.stringify(payload),
-      },
-    );
+      });
+      response = await res.json().catch(() => ({}));
+      if (res.ok) break;
+      const message = response?.error?.message || "";
+      const overloaded = res.status === 429 || res.status === 503
+        || /high demand|overloaded|try again later|temporar/i.test(message);
+      if (!overloaded || attempt === delays.length - 1) break;
+    }
 
-    const response = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const message = response?.error?.message || `Error de Gemini (${res.status})`;
-      const friendly = res.status === 429
-        ? "La IA está saturada en este momento. Probá de nuevo en un minuto."
+    if (!res || !res.ok) {
+      const message = response?.error?.message || `Error de Gemini (${res ? res.status : "sin respuesta"})`;
+      const friendly = /high demand|overloaded|try again later|temporar/i.test(message) || (res && (res.status === 429 || res.status === 503))
+        ? "La IA está con mucha demanda ahora. Probá de nuevo en un minuto."
         : message;
       return json({ error: friendly }, 502);
     }

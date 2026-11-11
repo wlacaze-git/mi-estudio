@@ -56,6 +56,9 @@ function friendly(error) {
   if (/paus|540|503|failed to fetch|network|load failed/i.test(message)) {
     return 'La nube no está disponible ahora. Si el proyecto está pausado, reactivalo en supabase.com y volvé a intentar.';
   }
+  if (/high demand|overloaded|try again later|temporar|saturad/i.test(message)) {
+    return 'La IA está con mucha demanda ahora. Probá de nuevo en un minuto.';
+  }
   if (/flow state|code verifier|invalid request|code challenge|invalid grant/i.test(message)) {
     return 'No se pudo completar el login (código vencido o abierto en otra ventana). Probá de nuevo desde esta misma ventana.';
   }
