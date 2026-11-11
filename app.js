@@ -2074,7 +2074,7 @@ if (!state.student && !state.settings.onboarded) {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch((err) => {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch((err) => {
       console.warn('Service worker no registrado', err);
     });
   });

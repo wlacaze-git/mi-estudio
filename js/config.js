@@ -4,3 +4,5 @@
 export const SUPABASE_URL = 'https://ownqsuajfdckytssajiq.supabase.co';
 export const SUPABASE_KEY = 'sb_publishable_rMWlFgo6GMlFBLL29qAkNg_nlo3e6Ce';
 export const CLOUD_ENABLED = Boolean(SUPABASE_URL && SUPABASE_KEY);
+
+export const APP_VERSION = '2026-11-11 · 33';

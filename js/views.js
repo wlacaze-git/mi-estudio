@@ -13,6 +13,7 @@ import {
 import { gradeMessage, cardSummary, stationQuestions } from './quiz.js';
 import { ANIMALS, animalAvatar, animalForLevel, orderedAnimals } from './animals.js';
 import { cloudSnapshot } from './cloud.js';
+import { APP_VERSION } from './config.js';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
@@ -1331,7 +1332,7 @@ export function renderPerfil(state, { today }) {
       <div class="card-head">
         <h2 class="card-title">Versión de la app</h2>
       </div>
-      <p class="muted small">Si no ves los últimos cambios, tocá acá: borra la copia vieja y vuelve a cargar la app. No se borran tus datos ni la sesión. Necesitás internet.</p>
+      <p class="muted small">Versión . Si no ves los últimos cambios, tocá acá: borra la copia vieja y vuelve a cargar la app. No se borran tus datos ni la sesión. Necesitás internet.</p>
       <div class="cloud-actions">
         <button type="button" class="btn btn-soft" data-action="force-update">🔄 Actualizar la app</button>
       </div>
