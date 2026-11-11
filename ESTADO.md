@@ -16,7 +16,7 @@
 
 **IA pendiente de estabilizar:** la función `procesar-foto` arranca y lista los modelos (GET `?models=1`), pero las llamadas a `generateContent` con **gemini-3.8-flash** se cuelgan desde Supabase y cortan por timeout (60 s). La clave sí tiene `gemini-2.5-flash`, `gemini-flash-latest` y otros. Próximos intentos: setear `GEMINI_MODEL=gemini-2.5-flash`, o mover la llamada a un Cloudflare Worker.
 
-**Seguridad pendiente:** la función valida el JWT solo por el payload (sin firma) y el gateway tiene “Verify JWT” apagado. Hay que verificar la firma (JWKS) o volver a activar la verificación del gateway.
+**Seguridad:** ✅ la función valida la firma del JWT (ES256) contra el JWKS público del proyecto, además de rol, expiración e issuer. Tokens inventados o sin sesión reciben 401. El gateway puede quedar con “Verify JWT” apagado.
 
 **Siguiente (a elección):**
 1. Fotos del plan → temas automáticos.
