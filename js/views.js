@@ -11,7 +11,7 @@ import {
   undatedPlans, upcomingExams, wrongQuestions, xpForLevel,
 } from './store.js';
 import { gradeMessage, cardSummary, stationQuestions } from './quiz.js';
-import { ANIMALS, animalAvatar, animalForLevel, nextAnimalForLevel } from './animals.js';
+import { ANIMALS, animalAvatar, animalForLevel, orderedAnimals } from './animals.js';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
@@ -178,30 +178,54 @@ export function renderHoy(state, { today }) {
              <div class="card-actions"><button type="button" class="btn btn-soft" data-action="start-quiz" data-mode="mock">Hacer una práctica libre</button></div>`)}
     </section>`;
 
-  const weekPanel = week.length
+  const reminderDays = [1, 2, 3, 4, 5, 6, 7]
+    .map((offset) => {
+      const date = addDays(today, offset);
+      return {
+        date,
+        tasks: tasksForDate(date, state),
+        events: state.exams.filter((plan) => plan.date === date),
+      };
+    })
+    .filter((day) => day.tasks.length || day.events.length);
+
+  const weekPanel = reminderDays.length
     ? `
       <section class="card">
         <div class="card-head">
-          <h2 class="card-title">Esta semana</h2>
-          <button type="button" class="btn btn-plain btn-small" data-action="nav" data-view="calendario">Ver todo</button>
+          <h2 class="card-title">Próximos días</h2>
+          <button type="button" class="btn btn-plain btn-small" data-action="nav" data-view="calendario">Ver calendario</button>
         </div>
-        <ul class="agenda">
-          ${week.map((exam) => {
-            const sub = subjectById(exam.subjectId, state);
-            return `
-              <li class="agenda-item" style="${subjectStyle(sub)}">
-                <div class="agenda-date">
-                  <strong>${esc(String(Number(exam.date.slice(8, 10))))}</strong>
-                  <span>${esc(fmtShort(exam.date).split(' ').slice(1).join(' '))}</span>
-                </div>
-                <div class="agenda-body">
-                  <span class="agenda-title">${esc(exam.title)}</span>
-                  <span class="agenda-meta">${esc(sub ? sub.name : '')} · ${esc(relativeLabel(exam.date, today))}</span>
-                </div>
-                <button type="button" class="icon-btn" data-action="select-day" data-date="${esc(exam.date)}" aria-label="Ver detalles">›</button>
-              </li>`;
-          }).join('')}
-        </ul>
+        <div class="reminder-days">
+          ${reminderDays.map((day) => `
+            <div class="reminder-day">
+              <div class="reminder-date">
+                <strong>${esc(String(Number(day.date.slice(8, 10))))}</strong>
+                <span>${esc(relativeLabel(day.date, today))}</span>
+              </div>
+              <ul class="reminder-items">
+                ${day.events.map((plan) => {
+                  const sub = subjectById(plan.subjectId, state);
+                  const kind = planKind(plan);
+                  return `
+                    <li class="reminder-event" style="${subjectStyle(sub)}" data-action="open-plan" data-id="${esc(plan.id)}" role="button" tabindex="0">
+                      <span class="kind-chip">${kind.emoji} ${esc(kind.label)}</span>
+                      <span class="reminder-text">${esc(plan.title)}</span>
+                      <small>${esc(sub ? sub.name : '')}</small>
+                    </li>`;
+                }).join('')}
+                ${day.tasks.map((task) => {
+                  const sub = subjectById(task.exam.subjectId, state);
+                  return `
+                    <li class="reminder-task ${task.done ? 'is-done' : ''}">
+                      <button type="button" class="task-check" data-action="toggle-task" data-key="${esc(task.key)}" data-done="${task.done ? '1' : '0'}" aria-label="${task.done ? 'Marcar como pendiente' : 'Marcar como hecho'}">${task.done ? '✓' : ''}</button>
+                      <span class="reminder-text">${esc(task.topic)}</span>
+                      <small>${esc(sub ? sub.name : '')}</small>
+                    </li>`;
+                }).join('')}
+              </ul>
+            </div>`).join('')}
+        </div>
       </section>`
     : '';
 
@@ -1227,14 +1251,19 @@ export function renderPerfil(state, { today }) {
   const xpToNext = level.need - level.inLevel;
   const profiles = listProfiles();
   const activeId = activeProfileId();
-  const animal = animalForLevel(level.level);
-  const nextAnimal = nextAnimalForLevel(level.level);
-  const xpToAnimal = nextAnimal ? Math.max(0, xpForLevel(nextAnimal.level) - (state.xp || 0)) : 0;
+  const animalList = orderedAnimals(state.settings && state.settings.animalOrder);
+  const currentIndex = Math.min(Math.max(level.level, 1) - 1, animalList.length - 1);
+  const animal = animalList[currentIndex];
+  const nextAnimal = animalList[currentIndex + 1] || null;
+  const nextLevel = currentIndex + 2;
+  const xpToAnimal = nextAnimal ? Math.max(0, xpForLevel(nextLevel) - (state.xp || 0)) : 0;
 
   return `
     <section class="profile-head">
       <div class="profile-avatar">
-        ${animalAvatar(animal)}
+        ${state.avatarPhotoId
+          ? `<img class="profile-photo" data-image-id="${esc(state.avatarPhotoId)}" alt="Mi personaje">`
+          : animalAvatar(animal)}
         <i class="level-pill">Nv ${level.level}</i>
       </div>
       <div class="profile-copy">
@@ -1266,22 +1295,54 @@ export function renderPerfil(state, { today }) {
         <h2 class="card-title">Tu animal</h2>
         <span class="pill">Nivel ${level.level}</span>
       </div>
-      <p class="muted small">Cuanto mejor te va, mejor es tu animal. El guepardo es el mejor de todos.</p>
+      <p class="muted small">Cuanto mejor te va, mejor es tu animal. Podés elegir qué animal va en cada nivel.</p>
       <div class="animal-ladder">
-        ${ANIMALS.map((item) => {
-          const unlocked = level.level >= item.level;
-          const current = item.id === animal.id;
+        ${animalList.map((item, index) => {
+          const animalLevel = index + 1;
+          const unlockedStep = level.level >= animalLevel;
+          const current = index === currentIndex;
           return `
-            <div class="animal-step ${unlocked ? 'is-unlocked' : ''} ${current ? 'is-current' : ''}">
+            <div class="animal-step ${unlockedStep ? 'is-unlocked' : ''} ${current ? 'is-current' : ''}">
               <span class="animal-circle">${item.svg}</span>
               <span class="animal-name">${esc(item.name)}</span>
-              <span class="animal-level">${current ? 'Ahora' : 'Nv ' + item.level}</span>
+              <span class="animal-level">${current ? 'Ahora' : 'Nv ' + animalLevel}</span>
             </div>`;
         }).join('')}
       </div>
       ${nextAnimal
-        ? `<p class="muted small">El próximo es <strong>${esc(nextAnimal.name)}</strong>: te faltan ${xpToAnimal} XP (nivel ${nextAnimal.level}).</p>`
-        : '<p class="muted small">¡Llegaste al guepardo! El animal más rápido de todos. 🐆</p>'}
+        ? `<p class="muted small">El próximo es <strong>${esc(nextAnimal.name)}</strong>: te faltan ${xpToAnimal} XP (nivel ${nextLevel}).</p>`
+        : '<p class="muted small">¡Llegaste al último animal del camino!</p>'}
+      ${level.level >= 8 || state.avatarPhotoId ? `
+        <div class="profile-photo-row">
+          <div>
+            <strong class="profile-photo-title">Tu personaje</strong>
+            <p class="muted small">${level.level >= 8 ? 'Ya sos nivel 8: podés usar tu propia foto como personaje.' : 'Estás usando tu foto como personaje.'}</p>
+          </div>
+          <div class="profile-photo-actions">
+            <label class="btn btn-plain btn-small file-btn">
+              ${state.avatarPhotoId ? 'Cambiar foto' : 'Subir mi foto'}
+              <input type="file" accept="image/*" data-role="avatar-photo">
+            </label>
+            ${state.avatarPhotoId ? '<button type="button" class="btn btn-danger btn-small" data-action="remove-avatar-photo">Quitar</button>' : ''}
+          </div>
+        </div>` : ''}
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Elegí tus animales</h2>
+      </div>
+      <p class="muted small">Cada nivel muestra un animal. Si elegís uno que ya está en otro nivel, se intercambian.</p>
+      <div class="animal-picker">
+        ${animalList.map((item, index) => `
+          <label class="animal-pick">
+            <span class="animal-pick-level">Nv ${index + 1}</span>
+            <span class="animal-pick-circle">${item.svg}</span>
+            <select data-action="set-level-animal" data-level="${index}" aria-label="Animal del nivel ${index + 1}">
+              ${ANIMALS.map((option) => `<option value="${esc(option.id)}" ${option.id === item.id ? 'selected' : ''}>${esc(option.name)}</option>`).join('')}
+            </select>
+          </label>`).join('')}
+      </div>
     </section>
 
     <section class="card">
@@ -1574,7 +1635,7 @@ export function renderPlanView(state, plan) {
 
 export function renderSubjectForm(state, { subject = null } = {}) {
   const editing = Boolean(subject);
-  const palette = ['#ec4899', '#f59e0b', '#10b981', '#0ea5e9', '#f97316', '#14b8a6', '#e11d48', '#84cc16'];
+  const palette = ['#ec4899', '#3b82f6', '#ef4444', '#eab308', '#8b5cf6', '#166534', '#22c55e', '#38bdf8', '#f97316', '#14b8a6', '#c084fc', '#d946ef', '#92400e', '#6b7280', '#111827'];
   const value = subject || { name: '', emoji: '📘', color: palette[0] };
   return `
     <div class="modal-head">
@@ -1746,7 +1807,10 @@ function perlaMessage(message) {
 }
 
 export function renderPerla(state, { draft = null } = {}) {
-  const messages = (state.perla && state.perla.messages) || [];
+  const chats = (state.perla && state.perla.chats) || [];
+  const activeChat = chats.find((chat) => chat.id === state.perla.activeId) || chats[0] || null;
+  const messages = activeChat ? activeChat.messages : [];
+  const sortedChats = [...chats].sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
   const graded = (state.exams || []).filter((plan) => Number.isFinite(plan.grade));
   const average = graded.length
     ? Math.round((graded.reduce((acc, plan) => acc + plan.grade, 0) / graded.length) * 10) / 10
@@ -1768,8 +1832,9 @@ export function renderPerla(state, { draft = null } = {}) {
           <img class="perla-avatar" src="icons/logo-perla.png" alt="Perla">
           <div class="perla-head-copy">
             <strong>Perla</strong>
-            <span>Guepardo de estudio</span>
+            <span>${activeChat ? esc(activeChat.title) : 'Guepardo de estudio'}</span>
           </div>
+          <button type="button" class="btn btn-soft btn-small" data-action="new-perla-chat">+ Nuevo chat</button>
           <span class="perla-status">en línea</span>
         </header>
 
@@ -1805,6 +1870,22 @@ export function renderPerla(state, { draft = null } = {}) {
       </section>
 
       <aside class="perla-side">
+        <section class="card">
+          <div class="card-head">
+            <h2 class="card-title">Tus chats</h2>
+            <button type="button" class="btn btn-soft btn-small" data-action="new-perla-chat">+ Nuevo</button>
+          </div>
+          ${chats.length
+            ? `<ul class="chat-list">${sortedChats.map((chat) => `
+                <li>
+                  <button type="button" class="chat-item ${chat.id === (activeChat && activeChat.id) ? 'is-active' : ''}" data-action="open-perla-chat" data-id="${esc(chat.id)}">
+                    <span class="chat-title">${esc(chat.title || 'Nuevo chat')}</span>
+                    <small>${chat.messages.length} ${chat.messages.length === 1 ? 'mensaje' : 'mensajes'}</small>
+                  </button>
+                </li>`).join('')}</ul>`
+            : '<p class="muted small">Todavía no hay chats.</p>'}
+        </section>
+
         <section class="card">
           <div class="card-head">
             <h2 class="card-title">Mis notas</h2>
@@ -2060,7 +2141,35 @@ export function renderLeccion(state, plan, station, { today }) {
 
     <div class="leccion-actions">
       <button type="button" class="btn btn-primary" data-action="start-station" data-plan="${esc(plan.id)}" data-key="${esc(station.key)}">Empezar las ${count} preguntas</button>
+      <button type="button" class="btn btn-soft" data-action="read-lesson">🔊 Escuchar</button>
+      <button type="button" class="btn btn-plain" data-action="open-pizarra" data-plan="${esc(plan.id)}" data-key="${esc(station.key)}">Ver en pizarra</button>
       ${available && available < 10 ? `<span class="muted small">Hay ${available} preguntas cargadas: se repiten un poco para completar las 12. Si agregás más en Materias, la estación varía más.</span>` : ''}
     </div>
+  `;
+}
+
+export function renderPizarra(state, plan, station) {
+  const subject = subjectById(plan.subjectId, state);
+  const notes = lessonNotes(state, plan, station);
+  const text = notes.length
+    ? notes.map((note) => `${note.title}. ${note.body || ''}`.trim()).join('\n\n')
+    : `Todavía no hay un apunte de ${station.topic}. Escribilo en Apuntes y aparece en la pizarra.`;
+  const count = stationQuestions(plan, station).length ? 12 : 0;
+
+  return `
+    <button type="button" class="back" data-action="open-station" data-plan="${esc(plan.id)}" data-key="${esc(station.key)}">← Volver a la lección</button>
+
+    <section class="pizarra-wrap">
+      <div class="pizarra">
+        <p class="pizarra-eyebrow">${station.final ? 'Repaso general' : 'Estación ' + (station.index + 1)} · ${esc(subject ? subject.name : '')}</p>
+        <h1>${esc(station.topic)}</h1>
+        <div class="pizarra-body" id="pizarra-text">${esc(text).replace(/\n/g, '<br>')}</div>
+      </div>
+      <div class="pizarra-actions">
+        <button type="button" class="btn btn-primary" data-action="read-lesson">🔊 Leer en voz alta</button>
+        <button type="button" class="btn btn-plain" data-action="stop-reading">Parar</button>
+        <button type="button" class="btn btn-soft" data-action="start-station" data-plan="${esc(plan.id)}" data-key="${esc(station.key)}">Empezar las ${count} preguntas</button>
+      </div>
+    </section>
   `;
 }

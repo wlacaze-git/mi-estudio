@@ -13,7 +13,7 @@ import {
 import {
   esc, toast, openModal, closeModal, isModalOpen, downloadFile,
 } from './js/ui.js';
-import { animalAvatar, animalForLevel } from './js/animals.js';
+import { animalAvatar, animalForLevel, orderedAnimals } from './js/animals.js';
 import { buildReply, gradeQuestion, welcomeText } from './js/perla.js';
 import {
   blobToDataURL, dataURLToBlob, deleteImage, deleteImages, getImageBlob,
@@ -24,9 +24,9 @@ import * as views from './js/views.js';
 const state = load();
 const viewEl = document.getElementById('view');
 const brandSub = document.getElementById('brand-sub');
-const navButtons = [...document.querySelectorAll('.nav [data-view]')];
+const navButtons = [...document.querySelectorAll('.nav [data-view], .mobile-nav [data-view]')];
 
-const SUBJECT_COLORS = ['#ec4899', '#f59e0b', '#10b981', '#0ea5e9', '#f97316', '#14b8a6', '#e11d48', '#84cc16'];
+const SUBJECT_COLORS = ['#ec4899', '#3b82f6', '#ef4444', '#eab308', '#8b5cf6', '#166534', '#22c55e', '#38bdf8', '#f97316', '#14b8a6', '#c084fc', '#d946ef', '#92400e', '#6b7280', '#111827'];
 
 const DAY_NUMBERS = { lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5 };
 
@@ -108,6 +108,12 @@ function render() {
     html = plan && station
       ? views.renderLeccion(current, plan, station, { today })
       : views.renderPlanes(current, { today });
+  } else if (route.view === 'pizarra' && route.planId && route.stationKey) {
+    const plan = current.exams.find((item) => item.id === route.planId);
+    const station = plan ? planStations(plan, current, today).stations.find((item) => item.key === route.stationKey) : null;
+    html = plan && station
+      ? views.renderPizarra(current, plan, station)
+      : views.renderPlanes(current, { today });
   } else if (route.view === 'perla') {
     html = views.renderPerla(current, { draft: perlaDraft });
   } else if (route.view === 'perfil') {
@@ -126,7 +132,7 @@ function render() {
 
   const activeView = route.view === 'subject' ? 'materias'
     : route.view === 'tarjetas' ? 'practica'
-      : (route.view === 'camino' || route.view === 'leccion') || (route.view === 'quiz' && quizSession && quizSession.station) ? 'planes'
+      : (route.view === 'camino' || route.view === 'leccion' || route.view === 'pizarra') || (route.view === 'quiz' && quizSession && quizSession.station) ? 'planes'
         : route.view;
   for (const btn of navButtons) {
     btn.classList.toggle('is-active', btn.dataset.view === activeView);
@@ -139,7 +145,7 @@ function render() {
   const avatarInitials = document.getElementById('nav-avatar-initials');
   const avatarLevel = document.getElementById('nav-avatar-level');
   const currentLevel = levelInfo(current.xp || 0).level;
-  if (avatarInitials) avatarInitials.innerHTML = animalAvatar(animalForLevel(currentLevel));
+  if (avatarInitials) avatarInitials.innerHTML = animalAvatar(animalForLevel(currentLevel, current.settings && current.settings.animalOrder));
   if (avatarLevel) avatarLevel.textContent = currentLevel;
   checkAnimal(currentLevel);
 
@@ -317,16 +323,49 @@ function perlaMessage(role, text, extra = {}) {
   };
 }
 
+function activePerlaChat(s = getState()) {
+  const chats = (s.perla && s.perla.chats) || [];
+  return chats.find((chat) => chat.id === s.perla.activeId) || null;
+}
+
+function ensurePerlaChat() {
+  const s = getState();
+  if (!s.perla) s.perla = { chats: [], activeId: null };
+  if (!s.perla.chats.length) {
+    update((state) => {
+      const id = uid('chat');
+      state.perla.chats.push({
+        id,
+        title: 'Nuevo chat',
+        messages: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      state.perla.activeId = id;
+    });
+  } else if (!s.perla.chats.some((chat) => chat.id === s.perla.activeId)) {
+    update((state) => { state.perla.activeId = state.perla.chats[0].id; });
+  }
+}
+
 function addPerlaMessage(message) {
   update((s) => {
-    s.perla.messages.push(message);
-    s.perla.messages = s.perla.messages.slice(-80);
+    const chat = s.perla.chats.find((item) => item.id === s.perla.activeId);
+    if (!chat) return;
+    chat.messages.push(message);
+    chat.messages = chat.messages.slice(-80);
+    chat.updatedAt = new Date().toISOString();
+    if (message.role === 'user' && (!chat.title || chat.title === 'Nuevo chat')) {
+      chat.title = message.text.trim().slice(0, 40) || 'Foto o apunte';
+    }
   });
 }
 
 function openPerla() {
+  ensurePerlaChat();
   const current = getState();
-  if ((current.perla.messages || []).length) return;
+  const chat = activePerlaChat(current);
+  if (!chat || chat.messages.length) return;
   const pending = pastPlansWithoutGrade(current);
   if (pending.length) {
     const plan = pending[0];
@@ -361,23 +400,37 @@ function answerGrade(planId, grade) {
       plan.grade = grade;
       plan.gradeAsked = true;
     }
-    const question = s.perla.messages.find((m) => m.kind === 'grade' && m.planId === planId && !m.answered);
+    const chat = (s.perla.chats || []).find((item) => item.id === s.perla.activeId);
+    if (!chat) return;
+    const question = chat.messages.find((m) => m.kind === 'grade' && m.planId === planId && !m.answered);
     if (question) question.answered = true;
-    s.perla.messages.push(perlaMessage('user', grade == null ? 'No me acuerdo.' : `Me saqué un ${grade}.`));
+    chat.messages.push(perlaMessage('user', grade == null ? 'No me acuerdo.' : `Me saqué un ${grade}.`));
     if (grade != null && grade < 6) {
-      s.perla.messages.push(perlaMessage('perla', 'No pasa nada, para eso estamos. Ese tema lo podemos repasar con preguntas.'));
+      chat.messages.push(perlaMessage('perla', 'No pasa nada, para eso estamos. Ese tema lo podemos repasar con preguntas.'));
     } else if (grade != null) {
-      s.perla.messages.push(perlaMessage('perla', '¡Bien! La guardé en tus notas.'));
+      chat.messages.push(perlaMessage('perla', '¡Bien! La guardé en tus notas.'));
     }
     const pending = pastPlansWithoutGrade(s);
     if (pending.length) {
       const nextPlan = pending[0];
-      s.perla.messages.push(perlaMessage('perla', gradeQuestion(nextPlan, s), { kind: 'grade', planId: nextPlan.id }));
+      chat.messages.push(perlaMessage('perla', gradeQuestion(nextPlan, s), { kind: 'grade', planId: nextPlan.id }));
     } else {
-      s.perla.messages.push(perlaMessage('perla', 'Listo, ya tengo tus notas guardadas. ¿Qué querés hacer ahora?'));
+      chat.messages.push(perlaMessage('perla', 'Listo, ya tengo tus notas guardadas. ¿Qué querés hacer ahora?'));
     }
-    s.perla.messages = s.perla.messages.slice(-80);
+    chat.messages = chat.messages.slice(-80);
   });
+}
+
+function speak(text) {
+  if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+    toast('Este dispositivo no puede leer en voz alta', 'warn');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(String(text).slice(0, 4000));
+  utterance.lang = 'es-ES';
+  utterance.rate = 0.98;
+  window.speechSynthesis.speak(utterance);
 }
 
 function openLightbox(url) {
@@ -504,6 +557,7 @@ async function exportBackup() {
     ...(current.notes || []).flatMap((note) => note.images || []),
     ...(current.exams || []).flatMap((plan) => plan.photos || []),
     ...(current.schedulePhotoId ? [{ id: current.schedulePhotoId }] : []),
+    ...(current.avatarPhotoId ? [{ id: current.avatarPhotoId }] : []),
   ];
   for (const photo of photosToSave) {
     try {
@@ -605,6 +659,27 @@ document.addEventListener('click', (event) => {
       if (exam) { closeModal(); openPlanWizard(exam); }
       return;
     }
+    case 'open-pizarra': {
+      const plan = getState().exams.find((item) => item.id === el.dataset.plan);
+      if (!plan) return;
+      const station = planStations(plan).stations.find((item) => item.key === el.dataset.key);
+      if (!station) return;
+      go({ view: 'pizarra', planId: plan.id, stationKey: station.key });
+      return;
+    }
+    case 'read-lesson': {
+      const box = document.getElementById('pizarra-text') || document.querySelector('.leccion-card');
+      const text = (box && box.innerText || '').trim();
+      if (!text) {
+        toast('No hay texto para leer todavía', 'warn');
+        return;
+      }
+      speak(text);
+      return;
+    }
+    case 'stop-reading':
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      return;
     case 'open-camino':
       go({ view: 'camino', planId: el.dataset.id });
       return;
@@ -855,6 +930,13 @@ document.addEventListener('click', (event) => {
     case 'import-schedule':
       showModal('import-schedule');
       return;
+    case 'remove-avatar-photo': {
+      const photoId = getState().avatarPhotoId;
+      update((s) => { s.avatarPhotoId = null; });
+      if (photoId) deleteImage(photoId);
+      toast('Personaje quitado');
+      return;
+    }
     case 'delete-schedule-photo': {
       const photoId = getState().schedulePhotoId;
       update((s) => { s.schedulePhotoId = null; });
@@ -884,6 +966,26 @@ document.addEventListener('click', (event) => {
       update((s) => { s.schedule = (s.schedule || []).filter((c) => c.id !== el.dataset.id); });
       closeModal();
       toast('Clase borrada');
+      return;
+    case 'new-perla-chat': {
+      update((s) => {
+        const id = uid('chat');
+        s.perla.chats.push({
+          id,
+          title: 'Nuevo chat',
+          messages: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        s.perla.activeId = id;
+      });
+      openPerla();
+      render();
+      return;
+    }
+    case 'open-perla-chat':
+      update((s) => { s.perla.activeId = el.dataset.id; });
+      render();
       return;
     case 'perla-quick':
       sendPerla(el.dataset.text || '');
@@ -930,7 +1032,8 @@ document.addEventListener('click', (event) => {
       update((s) => {
         const plan = s.exams.find((p) => p.id === el.dataset.id);
         if (plan) { plan.grade = Number(el.dataset.grade); plan.gradeAsked = true; }
-        const question = s.perla.messages.find((m) => m.kind === 'grade' && m.planId === el.dataset.id && !m.answered);
+        const chat = (s.perla.chats || []).find((item) => item.id === s.perla.activeId);
+        const question = chat && chat.messages.find((m) => m.kind === 'grade' && m.planId === el.dataset.id && !m.answered);
         if (question) question.answered = true;
       });
       closeModal();
@@ -975,6 +1078,7 @@ document.addEventListener('click', (event) => {
         ...((target && target.notes) || []).flatMap((note) => (note.images || []).map((photo) => photo.id)),
         ...((target && target.exams) || []).flatMap((plan) => (plan.photos || []).map((photo) => photo.id)),
         ...((target && target.schedulePhotoId) ? [target.schedulePhotoId] : []),
+        ...((target && target.avatarPhotoId) ? [target.avatarPhotoId] : []),
       ];
       const removed = deleteProfile(el.dataset.id);
       closeModal();
@@ -1044,6 +1148,7 @@ document.addEventListener('click', (event) => {
         ...(getState().notes || []).flatMap((note) => (note.images || []).map((photo) => photo.id)),
         ...(getState().exams || []).flatMap((plan) => (plan.photos || []).map((photo) => photo.id)),
         ...(getState().schedulePhotoId ? [getState().schedulePhotoId] : []),
+        ...(getState().avatarPhotoId ? [getState().avatarPhotoId] : []),
       ];
       update((s) => {
         s.student = '';
@@ -1492,6 +1597,45 @@ document.addEventListener('change', async (event) => {
 });
 
 document.addEventListener('modal:closed', () => { discardNoteDraft(); discardPlanDraft(); });
+
+// Elegir el animal de cada nivel (se intercambian si ya estaba usado).
+document.addEventListener('change', (event) => {
+  const select = event.target.closest('select[data-action="set-level-animal"]');
+  if (!select) return;
+  const levelIndex = Number(select.dataset.level);
+  const animalId = select.value;
+  update((s) => {
+    const ids = orderedAnimals(s.settings.animalOrder).map((animal) => animal.id);
+    const existing = ids.indexOf(animalId);
+    if (existing !== -1 && existing !== levelIndex) {
+      const other = ids[levelIndex];
+      ids[levelIndex] = animalId;
+      ids[existing] = other;
+    } else {
+      ids[levelIndex] = animalId;
+    }
+    s.settings.animalOrder = ids;
+  });
+});
+
+// Foto del personaje del perfil (se habilita desde el nivel 8).
+document.addEventListener('change', async (event) => {
+  const input = event.target.closest('input[data-role="avatar-photo"]');
+  if (!input) return;
+  const file = (input.files || [])[0];
+  input.value = '';
+  if (!file) return;
+  try {
+    const saved = await saveFile(file);
+    const previous = getState().avatarPhotoId;
+    update((s) => { s.avatarPhotoId = saved.id; });
+    if (previous) deleteImage(previous);
+    toast('Personaje actualizado');
+  } catch (err) {
+    console.error(err);
+    toast('No pude subir esa foto', 'warn');
+  }
+});
 
 // Fotos que se mandan a Perla en el chat.
 document.addEventListener('change', async (event) => {

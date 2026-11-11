@@ -2076,3 +2076,156 @@ input, textarea, select, button { font-family: inherit; }
   .nav { gap: 2px; }
   .nav button { padding: 7px 9px; font-size: 0.82rem; }
 }
+
+/* --------------------------- Barra móvil --------------------------- */
+
+.mobile-nav { display: none; }
+
+@media (max-width: 720px) {
+  .nav { display: none; }
+  .topbar { padding: 10px 0 6px; }
+  .brand-text { display: block; }
+  .brand-text small { display: none; }
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    gap: 2px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid var(--line);
+    overflow-x: auto;
+    scrollbar-width: none;
+    backdrop-filter: blur(10px);
+  }
+  .mobile-nav::-webkit-scrollbar { display: none; }
+  .mobile-nav button {
+    flex: 1 0 auto;
+    min-width: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 4px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-soft);
+    cursor: pointer;
+  }
+  .mobile-nav button span { font-size: 1.15rem; line-height: 1; }
+  .mobile-nav button small { font-size: 0.6rem; font-weight: 650; }
+  .mobile-nav button.is-active { background: #fde8f3; color: var(--primary-dark); }
+  .app { padding-bottom: 96px; }
+  .toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .modal { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+}
+
+.profile-photo { width: 100%; height: 100%; object-fit: cover; border-radius: 26px; display: block; }
+.profile-photo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line-strong);
+}
+.profile-photo-title { font-size: 0.95rem; }
+.profile-photo-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.animal-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 10px; margin-top: 12px; }
+.animal-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fffafc;
+}
+.animal-pick-level { width: 32px; font-size: 0.72rem; font-weight: 750; color: var(--muted); flex: none; }
+.animal-pick-circle { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: #fff0f7; border: 1px solid #f9c6dd; flex: none; }
+.animal-pick-circle svg { width: 74%; height: 74%; }
+.animal-pick select {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1.5px solid var(--line-strong);
+  background: #fff;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.reminder-days { display: flex; flex-direction: column; gap: 14px; }
+.reminder-day { display: flex; gap: 12px; }
+.reminder-date { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-width: 52px; padding: 6px 4px; }
+.reminder-date strong { font-size: 1.25rem; line-height: 1; color: var(--primary-dark); }
+.reminder-date span { font-size: 0.68rem; color: var(--muted); text-align: center; }
+.reminder-items { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.reminder-items li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: #fffafc; border: 1px solid var(--line); font-size: 0.9rem; }
+.reminder-event { cursor: pointer; }
+.reminder-event:hover { background: #fff0f7; }
+.reminder-text { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reminder-items small { color: var(--muted); font-size: 0.75rem; margin-left: auto; flex: none; }
+.reminder-task .task-check { width: 24px; height: 24px; border-radius: 7px; font-size: 0.75rem; }
+.reminder-task.is-done .reminder-text { text-decoration: line-through; color: var(--muted); }
+
+.chat-list { display: flex; flex-direction: column; gap: 6px; }
+.chat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+.chat-item:hover { background: #fffafc; }
+.chat-item.is-active { background: #fff0f7; border-color: #f9a8d4; }
+.chat-title { font-weight: 650; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-item small { font-size: 0.72rem; color: var(--muted); }
+
+.pizarra-wrap { margin-top: 10px; }
+.pizarra {
+  min-height: 380px;
+  padding: clamp(22px, 4vw, 34px);
+  border-radius: 22px;
+  color: #f4fff9;
+  background: radial-gradient(circle at 18% 8%, #336550, #1e3d32 70%);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.08), 0 18px 40px rgba(31, 63, 52, 0.25);
+}
+.pizarra-eyebrow { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: #bfe7d6; }
+.pizarra h1 { margin: 8px 0 16px; font-size: clamp(1.4rem, 3vw, 2rem); color: #ffffff; }
+.pizarra-body { font-size: clamp(1rem, 1.6vw, 1.12rem); line-height: 1.75; color: #eafeef; }
+.pizarra-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+
+@media (max-width: 720px) {
+  .app { padding: 0 14px 96px; }
+  .hero { flex-direction: column; padding: 20px; gap: 16px; }
+  .hero-main { max-width: none; }
+  .hero h1 { font-size: clamp(1.7rem, 7vw, 2rem); }
+  .hero-actions { gap: 8px; margin-top: 16px; }
+  .hero-actions .btn { flex: 1 1 auto; justify-content: center; }
+  .hero-side { width: 100%; flex-direction: row; flex-wrap: wrap; gap: 10px; }
+  .hero-level { flex: 1 1 180px; }
+  .streak { flex: 0 0 auto; }
+  .card { min-width: 0; }
+  .card-head { flex-wrap: wrap; }
+  .card-actions .btn { flex: 1 1 42%; }
+  .exam-spotlight { padding: 18px; }
+  .exam-spotlight .card-title { font-size: 1.45rem; }
+  .grid-2, .today-grid, .dash-grid, .profile-grid { grid-template-columns: 1fr; }
+  .detail-hero { padding: 20px; }
+  .mobile-nav button { min-width: 40px; padding: 6px 2px; }
+  .mobile-nav button small { font-size: 0.55rem; }
+  .mobile-nav button span { font-size: 1.05rem; }
+}

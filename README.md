@@ -44,7 +44,7 @@ Hecha para usarse en familia: Maggie (o quien la use) carga sus materias, exáme
 
 | Sección | Para qué sirve |
 | --- | --- |
-| **Hoy** | Saludo, nivel y XP, racha, próximo examen, **lo que agregaste en el calendario para hoy** y las tareas de repaso del día. |
+| **Hoy** | Saludo, nivel y XP, racha, próximo examen, **lo que agregaste en el calendario para hoy**, tareas del día y **recordatorios de los próximos 7 días** (con check para marcar hecho/pendiente). |
 | **My Perla** | Chat con Perla: le hablás, le mandás fotos, apuntes y videos, y te responde con tus exámenes, notas, horario y apuntes. |
 | **Planes** | Cada plan es un **camino con estaciones**: lección y 12 preguntas por día, y una estación final de repaso general. |
 | **Horario** | De lunes a viernes: materia, hora y **profesor/a** de cada clase, con **foto del horario** y opción de crear materias nuevas. |
@@ -179,6 +179,28 @@ Si la materia tiene pocas preguntas cargadas, la estación repite algunas para l
 | Planes | Camino | Lección |
 | --- | --- | --- |
 | ![Lista de planes con su progreso](capturas/planes.png) | ![Camino con estaciones y repaso final](capturas/camino.png) | ![Lección de una estación con sus preguntas](capturas/leccion.png) |
+
+---
+
+## Novedades de esta tanda
+
+- **Colores de materias**: 15 colores para elegir (rosa, azul, rojo, amarillo, morado, verde oscuro, verde claro, celeste, naranja, turquesa, lila, fucsia, marrón, gris y negro).
+- **Animales por nivel**: en Perfil → “Elegí tus animales” se puede cambiar qué animal va en cada nivel (si elegís uno repetido, se intercambian).
+- **Personaje propio**: desde el nivel 8 se puede subir una foto para usar como personaje del perfil.
+- **My Perla con varios chats**: “+ Nuevo chat” y lista de conversaciones anteriores, cada una conserva su contexto.
+- **Recordatorios en Hoy**: además de lo de hoy, se ven los próximos 7 días con sus tareas (se marcan hechas/pendientes) y los exámenes/tests de todas las materias.
+- **Barra para el teléfono**: en pantallas chicas las secciones pasan a una barra inferior con iconos y nombres cortos; en iPad y computadora siguen arriba.
+- **Pizarra y lectura en voz alta**: cada estación tiene “Ver en pizarra” y “Escuchar” (voz del dispositivo) para leer la lección.
+
+| Móvil | Perfil y animales | Chats de Perla | Pizarra |
+| --- | --- | --- | --- |
+| ![Barra inferior en el teléfono](capturas/movil.png) | ![Elegir animales y personaje](capturas/perfil.png) | ![Lista de chats de Perla](capturas/perla-chats.png) | ![Lección en la pizarra](capturas/pizarra.png) |
+
+### Pendiente de definir
+
+- **Leer la foto del horario con IA** y **explicaciones generadas con IA**: necesitan una API key (OpenAI/Gemini) o un servidor; por ahora la foto se guarda y la carga es con “Importar texto”.
+- **Iniciar sesión con Google/Apple y sincronizar entre dispositivos**: necesita backend y cuentas de desarrollador.
+- **Animales nuevos**: hoy se eligen entre los 8 dibujados; sumar otros requiere ilustrarlos.
 
 ---
 

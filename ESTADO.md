@@ -1,8 +1,28 @@
 # Estado del proyecto — Mi Estudio / Perla
 
-**Última actualización:** 10 de noviembre de 2026 (noche).
+**Última actualización:** 11 de noviembre de 2026 (mañana).
 **App publicada:** <https://wlacaze-git.github.io/mi-estudio/>
 **Repo:** <https://github.com/wlacaze-git/mi-estudio> (GitHub Pages, rama `main`).
+
+---
+
+## Novedades del 11/11
+
+Hecho en esta tanda:
+
+- **15 colores** para las materias.
+- **Elegir animales por nivel** desde Perfil (intercambia si se repite) y **foto propia como personaje** desde el nivel 8.
+- **My Perla con varios chats**: nuevo chat, historial y contexto por conversación.
+- **Recordatorios en Hoy**: próximos 7 días con tareas marcables y exámenes/tests de todas las materias.
+- **Barra inferior en el teléfono** (iPad y computadora mantienen las pestañas de arriba).
+- **Pizarra + lectura en voz alta** en cada estación (voz del dispositivo).
+
+Pendiente de información/definición (guardado para revisar juntos):
+
+- **Importar el horario desde una foto**: hace falta IA (API key o backend) para leer la imagen; hoy queda la foto y la importación por texto.
+- **Iniciar sesión (Google/Apple) y sincronizar**: requiere backend, cuentas de desarrollador y definir proveedor.
+- **Animales nuevos**: la app trae 8 dibujados; si quieren otros (unicornio, etc.) hay que ilustrarlos.
+- **Explicaciones generadas con IA** (a partir de fotos o preguntas): misma dependencia de IA; la pizarra ya lee los apuntes existentes.
 
 ---
 
@@ -34,7 +54,7 @@
 Para cambios: editar los archivos, correr los tests y publicar:
 
 ```bash
-node .dev/test.mjs          # 118 chequeos (necesita jsdom en .dev)
+node .dev/test.mjs          # 133 chequeos (necesita jsdom en .dev)
 node .dev/migrate-test.mjs  # migración de datos viejos
 node .dev/cdp.mjs           # 59 chequeos en Chrome real (requiere servidor local)
 git add -A && git commit -m "..." && git push

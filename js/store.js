@@ -79,7 +79,7 @@ export function switchProfile(id) {
   registry.active = id;
   writeRegistry(registry);
   const raw = readJSON(STATE_KEY(id), null);
-  state = raw ? migrate(raw) : seedState();
+  state = raw ? migrate(raw) : migrate(seedState());
   save();
   notify();
   return activeProfile();
@@ -161,8 +161,24 @@ function migrate(raw) {
   }));
   next.schedule = Array.isArray(raw.schedule) ? raw.schedule : [];
   next.schedulePhotoId = typeof raw.schedulePhotoId === 'string' ? raw.schedulePhotoId : null;
+  next.avatarPhotoId = typeof raw.avatarPhotoId === 'string' ? raw.avatarPhotoId : null;
+  const perlaRaw = raw.perla && typeof raw.perla === 'object' ? raw.perla : {};
+  let chats = Array.isArray(perlaRaw.chats) ? perlaRaw.chats : [];
+  let activeId = typeof perlaRaw.activeId === 'string' ? perlaRaw.activeId : null;
+  if (!chats.length && Array.isArray(perlaRaw.messages) && perlaRaw.messages.length) {
+    const legacyId = 'chat-1';
+    chats = [{
+      id: legacyId,
+      title: 'Mi primera charla',
+      messages: perlaRaw.messages.slice(-80),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }];
+    activeId = legacyId;
+  }
   next.perla = {
-    messages: Array.isArray(raw.perla && raw.perla.messages) ? raw.perla.messages.slice(-80) : [],
+    chats,
+    activeId: chats.some((chat) => chat.id === activeId) ? activeId : ((chats[0] && chats[0].id) || null),
   };
   next.attempts = Array.isArray(raw.attempts) ? raw.attempts : [];
   next.planDone = raw.planDone && typeof raw.planDone === 'object' ? raw.planDone : {};

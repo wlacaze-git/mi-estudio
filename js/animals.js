@@ -149,13 +149,16 @@ export const ANIMALS = [
   { id: 'guepardo', name: 'Guepardo', level: 8, svg: guepardo },
 ];
 
-export function animalForLevel(level) {
-  const value = Math.max(1, Number(level) || 1);
-  let current = ANIMALS[0];
-  for (const animal of ANIMALS) {
-    if (value >= animal.level) current = animal;
-  }
-  return current;
+export function orderedAnimals(order = null) {
+  if (!Array.isArray(order) || !order.length) return ANIMALS;
+  const mapped = order.map((id) => ANIMALS.find((animal) => animal.id === id)).filter(Boolean);
+  return mapped.length === ANIMALS.length ? mapped : ANIMALS;
+}
+
+export function animalForLevel(level, order = null) {
+  const list = orderedAnimals(order);
+  const index = Math.min(Math.max(1, Number(level) || 1) - 1, list.length - 1);
+  return list[index];
 }
 
 export function nextAnimalForLevel(level) {
