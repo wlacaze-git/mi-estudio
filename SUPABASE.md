@@ -123,11 +123,20 @@ respuesta JSON: texto, temas, resumen, preguntas
 
 ---
 
-## IA con Gemini (fotos → texto, resumen y preguntas)
+## IA (fotos → texto, resumen y preguntas)
 
-La app ya tiene los botones **“Leer con IA”** en la foto del horario y en el formulario de apuntes. Falta publicar la función y cargar la clave.
+La app ya tiene los botones **“Leer con IA”** en la foto del horario, en el formulario de apuntes, en las estaciones y en la pizarra.
 
-### 1. Sacar la API key de Gemini (gratis)
+La función usa **OpenAI** si existe OPENAI_API_KEY; si no, usa **Gemini** con GEMINI_API_KEY.
+
+### Opción OpenAI (recomendada si tenés saldo)
+
+1. <https://platform.openai.com/api-keys> → **Create new secret key**.
+2. Supabase → **Edge Functions → Secrets**: OPENAI_API_KEY = sk-....
+3. Opcional: OPENAI_MODEL = gpt-4o-mini (por defecto), o gpt-4.1-mini / gpt-5-mini si querés más calidad.
+4. Poné un límite de gasto en OpenAI (ej. 5 USD/mes).
+
+### Opción Gemini (gratis)
 
 1. Entrar a <https://aistudio.google.com/apikey>.
 2. **Create API key** → elegir el proyecto → copiar la clave (`AIza...`).
