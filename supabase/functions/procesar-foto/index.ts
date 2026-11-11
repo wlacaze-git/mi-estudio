@@ -94,14 +94,14 @@ const SCHEMAS = {
   },
 };
 
-function json(data, status = 200) {
+function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...CORS, "Content-Type": "application/json" },
   });
 }
 
-function parseJson(text) {
+function parseJson(text: string) {
   const clean = String(text || "").replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
   try {
     return JSON.parse(clean);
@@ -117,13 +117,15 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const image = body.image;
-    const text = typeof body.text === "string" ? body.text.trim() : "";
-    const mode = body.mode || "apunte";
+    const inputText = typeof body.text === "string" ? body.text.trim() : "";
+    const mode = String(body.mode || "apunte");
     const count = Math.min(Math.max(Number(body.count) || 10, 3), 20);
+    const prompts = PROMPTS as Record<string, string>;
+    const schemas = SCHEMAS as Record<string, unknown>;
 
-    if (!image && !text) return json({ error: "Falta la imagen o el texto" }, 400);
+    if (!image && !inputText) return json({ error: "Falta la imagen o el texto" }, 400);
     if (mode === "horario" && !image) return json({ error: "El horario necesita una foto" }, 400);
-    if (!PROMPTS[mode]) return json({ error: "Modo inválido" }, 400);
+    if (!prompts[mode]) return json({ error: "Modo inválido" }, 400);
 
     const key = Deno.env.get("GEMINI_API_KEY");
     if (!key) return json({ error: "Falta configurar GEMINI_API_KEY en Supabase" }, 500);
@@ -136,11 +138,11 @@ serve(async (req) => {
     if (data && data.length > 12_000_000) return json({ error: "La imagen es demasiado grande" }, 413);
 
     const prompt = mode === "preguntas"
-      ? `${PROMPTS[mode]}\nGenerá exactamente ${count} preguntas.`
-      : PROMPTS[mode];
+      ? `${prompts[mode]}\nGenerá exactamente ${count} preguntas.`
+      : prompts[mode];
 
     const parts: Array<Record<string, unknown>> = [{ text: prompt }];
-    if (text) parts.push({ text: `Contenido para generar las preguntas:\n${text.slice(0, 15000)}` });
+    if (inputText) parts.push({ text: `Contenido para generar las preguntas:\n${inputText.slice(0, 15000)}` });
     if (image) parts.push({ inlineData: { mimeType, data } });
 
     const payload = {
@@ -148,14 +150,14 @@ serve(async (req) => {
       generationConfig: {
         temperature: 0.2,
         responseMimeType: "application/json",
-        responseSchema: SCHEMAS[mode],
+        responseSchema: schemas[mode],
       },
     };
 
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
     const delays = [0, 1500, 4000];
-    let res;
-    let response = {};
+    let res: Response | undefined;
+    let response: any = {};
     for (let attempt = 0; attempt < delays.length; attempt += 1) {
       if (delays[attempt]) await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
       res = await fetch(endpoint, {
@@ -179,14 +181,15 @@ serve(async (req) => {
       return json({ error: friendly }, 502);
     }
 
-    const text = (response?.candidates?.[0]?.content?.parts || [])
-      .map((part) => part.text || "")
+    const resultText = (response?.candidates?.[0]?.content?.parts || [])
+      .map((part: { text?: string }) => part.text || "")
       .join("");
-    if (!text) return json({ error: "La IA no devolvió contenido" }, 502);
+    if (!resultText) return json({ error: "La IA no devolvió contenido" }, 502);
 
-    const parsed = parseJson(text);
+    const parsed = parseJson(resultText);
     return json({ ...parsed, mode, model: MODEL }, 200);
   } catch (error) {
-    return json({ error: String(error?.message || error) }, 500);
+    const message = error instanceof Error ? error.message : String(error);
+    return json({ error: message }, 500);
   }
 });
