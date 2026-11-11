@@ -230,7 +230,18 @@ export async function analizarFoto(dataUrl, mode = 'apunte', extra = {}) {
   const { data, error } = await client.functions.invoke('procesar-foto', {
     body: { image: dataUrl, mode, ...extra },
   });
-  if (error) throw new Error(friendly(error));
+  if (error) {
+    let detail = error.message || 'La función de IA devolvió un error';
+    try {
+      if (error.context && typeof error.context.json === 'function') {
+        const body = await error.context.json();
+        detail = body.error || body.message || body.msg || detail;
+      }
+    } catch {
+      /* sin detalle */
+    }
+    throw new Error(friendly(detail));
+  }
   if (data && data.error) throw new Error(data.error);
   return data;
 }
