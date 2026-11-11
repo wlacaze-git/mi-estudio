@@ -1,5 +1,5 @@
 /* Service worker: deja la app disponible sin internet. */
-const CACHE = 'mi-estudio-v17';
+const CACHE = 'mi-estudio-v18';
 const ASSETS = [
   './',
   './index.html',
@@ -14,9 +14,12 @@ const ASSETS = [
   './js/images.js',
   './js/animals.js',
   './js/perla.js',
+  './js/config.js',
+  './js/cloud.js',
   './manifest.webmanifest',
   './icons/icon-180.png',
   './icons/patron-rosa.png',
+  './vendor/supabase.js',
   './icons/logo-perla.png',
   './icons/icon-maskable-512.png',
   './icons/icon-192.png',

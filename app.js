@@ -15,6 +15,7 @@ import {
 } from './js/ui.js';
 import { animalAvatar, animalForLevel, orderedAnimals } from './js/animals.js';
 import { buildReply, gradeQuestion, welcomeText } from './js/perla.js';
+import { bindToCurrentProfile, downloadNow, initCloud, onCloudChange, pushNow, schedulePush, signIn, signOut } from './js/cloud.js';
 import {
   blobToDataURL, dataURLToBlob, deleteImage, deleteImages, getImageBlob,
   hydrate, imageUrl, putImage, saveFile,
@@ -632,7 +633,7 @@ function deleteSubject(id) {
 
 /* --------------------------- Delegación --------------------------- */
 
-document.addEventListener('click', (event) => {
+document.addEventListener('click', async (event) => {
   const el = event.target.closest('[data-action]');
   if (!el) return;
   const action = el.dataset.action;
@@ -985,6 +986,49 @@ document.addEventListener('click', (event) => {
     }
     case 'open-perla-chat':
       update((s) => { s.perla.activeId = el.dataset.id; });
+      render();
+      return;
+    case 'cloud-signin': {
+      const provider = el.dataset.provider || 'google';
+      try {
+        await signIn(provider);
+      } catch (error) {
+        toast(error.message || 'No se pudo iniciar sesión', 'warn');
+      }
+      return;
+    }
+    case 'cloud-signout':
+      try {
+        await signOut();
+        toast('Sesión cerrada');
+        render();
+      } catch (error) {
+        toast(error.message || 'No se pudo cerrar sesión', 'warn');
+      }
+      return;
+    case 'cloud-push':
+      try {
+        await pushNow();
+        toast('Guardado en la nube');
+      } catch (error) {
+        toast(error.message || 'No se pudo guardar en la nube', 'warn');
+      }
+      render();
+      return;
+    case 'cloud-pull': {
+      if (!window.confirm('¿Bajar los datos de la nube? Se reemplaza lo guardado en este dispositivo.')) return;
+      try {
+        await downloadNow();
+        toast('Datos bajados de la nube');
+      } catch (error) {
+        toast(error.message || 'No se pudo bajar de la nube', 'warn');
+      }
+      render();
+      return;
+    }
+    case 'cloud-bind':
+      bindToCurrentProfile();
+      toast('Este perfil ahora sincroniza');
       render();
       return;
     case 'perla-quick':
@@ -1719,7 +1763,10 @@ document.addEventListener('keydown', (event) => {
 /* --------------------------- Arranque --------------------------- */
 
 // Cualquier cambio en los datos vuelve a dibujar la vista actual.
-subscribe(() => render());
+subscribe(() => {
+  render();
+  schedulePush();
+});
 
 render();
 

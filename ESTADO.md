@@ -8,14 +8,16 @@
 
 ## Próximo paso decidido (11/11): Supabase plan FREE
 
-Se eligió **Supabase Free** para cuentas (Google), sincronización y fotos. La app seguirá siendo local-first: si el proyecto está pausado o no hay internet, se estudia igual y sincroniza después.
+**Proyecto:** `Maggie_estudio` — <https://ownqsuajfdckytssajiq.supabase.co>
+**Código:** `js/config.js` (URL + publishable key), `js/cloud.js` (login, push/pull, fotos), tarjeta “Nube” en Perfil. Supabase JS vendorizado en `vendor/supabase.js`.
+**Hecho:** la app carga la librería, muestra “Entrar con Google” y el error correcto si no hay sesión (probado en Chrome, sin errores de consola).
 
-- Guía de puesta en marcha: [SUPABASE.md](SUPABASE.md).
-- SQL para tablas, bucket y reglas: [supabase/schema.sql](supabase/schema.sql).
-- **Bloqueado hasta tener**: Project URL + anon public key del proyecto de Supabase (los crea el usuario).
-- **Arquitectura acordada (10 personas)**: Supabase Auth (Google; Apple si se paga Apple Developer) + Postgres para el estado + Storage para fotos + Edge Function con la clave de Gemini para convertir fotos en texto y resumir/generar preguntas. Todo entra en el plan Free (500 MB base, 1 GB fotos, 500.000 invocaciones/mes).
-- **También falta**: API key de Gemini (gratis en Google AI Studio) para la Edge Function.
-- A tener en cuenta: el plan Free **pausa el proyecto tras 7 días sin actividad**; se reactiva desde el panel y los datos quedan. Sin backups automáticos (usar el backup `.json` de la app). Apple exige rotar el secret cada 6 meses.
+**Falta (bloqueante):**
+1. Correr [`supabase/schema.sql`](supabase/schema.sql) en el SQL Editor (la tabla `estados` no existe todavía).
+2. Activar el proveedor **Google** en Supabase (Client ID/Secret de Google Cloud).
+3. Probar login + “Guardar ahora” + “Bajar de la nube” en el iPad.
+
+**Seguridad:** la secret key que se compartió por chat hay que **revocarla/rotarla** en Supabase; la app solo usa la publishable key.
 
 ---
 

@@ -1,5 +1,11 @@
 # Supabase con el plan FREE — puesta en marcha
 
+**Proyecto creado:** `Maggie_estudio`
+**URL:** <https://ownqsuajfdckytssajiq.supabase.co>
+**Publishable key:** ya está cargada en [`js/config.js`](js/config.js) (es pública; la secreta **no** va en la app).
+
+**Estado:** código de conexión listo (login Google, guardar/bajar datos y fotos). Faltan dos cosas del lado de Supabase: **correr el SQL** y **activar Google**. La tabla `estados` todavía no existe (verificado: responde `PGRST205`).
+
 Decisión: usamos **Supabase Free** para cuentas (Google), sincronización y fotos.
 La app sigue funcionando **local-first**: si Supabase está pausado o sin internet, se puede estudiar igual y sincroniza después.
 

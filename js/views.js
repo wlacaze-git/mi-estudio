@@ -12,6 +12,7 @@ import {
 } from './store.js';
 import { gradeMessage, cardSummary, stationQuestions } from './quiz.js';
 import { ANIMALS, animalAvatar, animalForLevel, orderedAnimals } from './animals.js';
+import { cloudSnapshot } from './cloud.js';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
@@ -1241,6 +1242,47 @@ export function renderCardsSummary(session, state) {
 
 /* =========================== PERFIL =========================== */
 
+export function renderCloudCard() {
+  const c = cloudSnapshot();
+  if (!c.enabled) return '';
+  const labels = {
+    idle: 'Conectado',
+    syncing: 'Sincronizando…',
+    synced: 'Sincronizado',
+    paused: 'Pausado',
+    error: 'Con error',
+    'signed-out': 'Sin cuenta',
+    off: 'No disponible',
+  };
+  const when = c.lastSync
+    ? new Date(c.lastSync).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : '';
+
+  return `
+    <section class="card cloud-card">
+      <div class="card-head">
+        <h2 class="card-title">Nube</h2>
+        <span class="pill cloud-status is-${esc(c.status)}">${esc(labels[c.status] || c.status)}</span>
+      </div>
+      ${!c.user
+        ? `
+        <p class="muted small">Entrá con Google para guardar el progreso y las fotos en la nube, y recuperarlos en otro dispositivo.</p>
+        <div class="cloud-actions">
+          <button type="button" class="btn btn-primary" data-action="cloud-signin" data-provider="google">Entrar con Google</button>
+          <button type="button" class="btn btn-plain" data-action="cloud-signin" data-provider="apple" disabled title="Se activa más adelante">Entrar con Apple</button>
+        </div>`
+        : `
+        <p class="muted small">${esc(c.user.email || 'Cuenta conectada')}${when ? ' · último guardado: ' + esc(when) : ''}</p>
+        ${c.status === 'paused' ? '<p class="muted small">Este perfil no es el que sincroniza. <button type="button" class="link-btn" data-action="cloud-bind">Usar este perfil</button></p>' : ''}
+        ${c.error ? `<p class="cloud-error">${esc(c.error)}</p>` : ''}
+        <div class="cloud-actions">
+          <button type="button" class="btn btn-soft btn-small" data-action="cloud-push">Guardar ahora</button>
+          <button type="button" class="btn btn-plain btn-small" data-action="cloud-pull">Bajar de la nube</button>
+          <button type="button" class="btn btn-plain btn-small" data-action="cloud-signout">Cerrar sesión</button>
+        </div>`}
+    </section>`;
+}
+
 export function renderPerfil(state, { today }) {
   const name = (state.student || '').trim() || 'Estudiante';
   const level = levelInfo(state.xp || 0);
@@ -1280,6 +1322,8 @@ export function renderPerfil(state, { today }) {
         <button type="button" class="btn btn-plain btn-small" data-action="nav" data-view="ajustes">Ajustes</button>
       </div>
     </section>
+
+    ${renderCloudCard()}
 
     <div class="stat-grid">
       <div class="stat-tile"><strong>${stats.days}</strong><span>días de estudio</span></div>
