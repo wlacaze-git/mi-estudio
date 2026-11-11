@@ -108,20 +108,27 @@ function parseJson(text: string) {
   }
 }
 
-async function requireUser(req: Request): Promise<boolean> {
+async function fetchWithTimeout(url: string, options: RequestInit, ms: number) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function hasUserToken(req: Request): boolean {
   const auth = req.headers.get("Authorization") || "";
   const token = auth.replace(/^Bearer\s+/i, "").trim();
-  if (!token) return false;
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://ownqsuajfdckytssajiq.supabase.co";
-  const apikey = req.headers.get("apikey")
-    || Deno.env.get("SUPABASE_ANON_KEY")
-    || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")
-    || "sb_publishable_rMWlFgo6GMlFBLL29qAkNg_nlo3e6Ce";
+  const parts = token.split(".");
+  if (parts.length !== 3) return false;
   try {
-    const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}`, apikey },
-    });
-    return res.ok;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(base64));
+    const role = payload && payload.role;
+    const exp = Number(payload && payload.exp) || 0;
+    return role === "authenticated" && (!exp || exp * 1000 > Date.now());
   } catch {
     return false;
   }
@@ -131,10 +138,7 @@ async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method === "GET") return json({ ok: true, model: MODEL }, 200);
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
-
-  if (!(await requireUser(req))) {
-    return json({ error: "Entrá con tu cuenta para usar la IA" }, 401);
-  }
+  if (!hasUserToken(req)) return json({ error: "Entrá con tu cuenta para usar la IA" }, 401);
 
   try {
     const body = await req.json();
@@ -177,17 +181,22 @@ async function handler(req: Request): Promise<Response> {
     };
 
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-    const delays = [0, 1500, 4000];
+    const delays = [0, 1500];
     let res: Response | undefined;
     let response: any = {};
     for (let attempt = 0; attempt < delays.length; attempt += 1) {
       if (delays[attempt]) await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
-      res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-        body: JSON.stringify(payload),
-      });
-      response = await res.json().catch(() => ({}));
+      try {
+        res = await fetchWithTimeout(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+          body: JSON.stringify(payload),
+        }, 20000);
+        response = await res.json().catch(() => ({}));
+      } catch {
+        response = { error: { message: "timeout" } };
+        break;
+      }
       if (res.ok) break;
       const message = response?.error?.message || "";
       const overloaded = res.status === 429 || res.status === 503
@@ -197,10 +206,12 @@ async function handler(req: Request): Promise<Response> {
 
     if (!res || !res.ok) {
       const message = response?.error?.message || `Error de Gemini (${res ? res.status : "sin respuesta"})`;
-      const friendly = /high demand|overloaded|try again later|temporar/i.test(message)
-        || (res && (res.status === 429 || res.status === 503))
-        ? "La IA está con mucha demanda ahora. Probá de nuevo en un minuto."
-        : message;
+      const friendly = /timeout|abort/i.test(message)
+        ? "La IA tardó demasiado. Probá de nuevo en un minuto."
+        : /high demand|overloaded|try again later|temporar/i.test(message)
+          || (res && (res.status === 429 || res.status === 503))
+          ? "La IA está con mucha demanda ahora. Probá de nuevo en un minuto."
+          : message;
       return json({ error: friendly }, 502);
     }
 
