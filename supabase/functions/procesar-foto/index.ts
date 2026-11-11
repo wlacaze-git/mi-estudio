@@ -13,7 +13,7 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
+const MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.8-flash";
 
 const PROMPTS = {
   horario: `Sos un asistente que lee la foto de un horario escolar.
