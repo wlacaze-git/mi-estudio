@@ -118,17 +118,70 @@ async function fetchWithTimeout(url: string, options: RequestInit, ms: number) {
   }
 }
 
-function hasUserToken(req: Request): boolean {
-  const auth = req.headers.get("Authorization") || "";
-  const token = auth.replace(/^Bearer\s+/i, "").trim();
+const PROJECT_URL = (Deno.env.get("SUPABASE_URL") || "https://ownqsuajfdckytssajiq.supabase.co").replace(/\/$/, "");
+const PUBLISHABLE_KEY = Deno.env.get("SUPABASE_PUBLISHABLE_KEY")
+  || Deno.env.get("SUPABASE_ANON_KEY")
+  || "sb_publishable_rMWlFgo6GMlFBLL29qAkNg_nlo3e6Ce";
+
+type Jwk = Record<string, unknown>;
+let jwksCache: { keys: Jwk[]; fetchedAt: number } | null = null;
+
+function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(new ArrayBuffer(binary.length));
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function getJwks(force = false): Promise<Jwk[]> {
+  const fresh = jwksCache && Date.now() - jwksCache.fetchedAt < 10 * 60 * 1000;
+  if (!force && fresh) return jwksCache!.keys;
+  const res = await fetch(`${PROJECT_URL}/auth/v1/.well-known/jwks.json`, {
+    headers: { apikey: PUBLISHABLE_KEY },
+  });
+  if (!res.ok) {
+    if (jwksCache) return jwksCache.keys;
+    throw new Error("No se pudo validar la sesión");
+  }
+  const data = await res.json();
+  jwksCache = { keys: Array.isArray(data.keys) ? data.keys : [], fetchedAt: Date.now() };
+  return jwksCache.keys;
+}
+
+async function verifyJwt(token: string): Promise<boolean> {
   const parts = token.split(".");
   if (parts.length !== 3) return false;
   try {
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const payload = JSON.parse(atob(base64));
-    const role = payload && payload.role;
-    const exp = Number(payload && payload.exp) || 0;
-    return role === "authenticated" && (!exp || exp * 1000 > Date.now());
+    const header = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[0])));
+    const payload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[1])));
+    if (header.alg !== "ES256" || !header.kid) return false;
+    if (payload.role !== "authenticated") return false;
+    if (!payload.exp || Number(payload.exp) * 1000 < Date.now()) return false;
+    if (payload.iss && payload.iss !== `${PROJECT_URL}/auth/v1`) return false;
+
+    let keys = await getJwks();
+    let jwk = keys.find((key) => key.kid === header.kid);
+    if (!jwk) {
+      keys = await getJwks(true);
+      jwk = keys.find((key) => key.kid === header.kid);
+    }
+    if (!jwk) return false;
+
+    const key = await crypto.subtle.importKey(
+      "jwk",
+      jwk,
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["verify"],
+    );
+    return await crypto.subtle.verify(
+      { name: "ECDSA", hash: "SHA-256" },
+      key,
+      base64UrlToBytes(parts[2]),
+      new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
+    );
   } catch {
     return false;
   }
@@ -150,7 +203,11 @@ async function handler(req: Request): Promise<Response> {
     return json({ ok: true, model: MODEL }, 200);
   }
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
-  if (!hasUserToken(req)) return json({ error: "Entrá con tu cuenta para usar la IA" }, 401);
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!(await verifyJwt(token))) {
+    return json({ error: "Entrá con tu cuenta para usar la IA" }, 401);
+  }
 
   try {
     const body = await req.json();
