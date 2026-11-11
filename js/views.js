@@ -1327,6 +1327,16 @@ export function renderPerfil(state, { today }) {
 
     ${renderCloudCard()}
 
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Versión de la app</h2>
+      </div>
+      <p class="muted small">Si no ves los últimos cambios, tocá acá: borra la copia vieja y vuelve a cargar la app. No se borran tus datos ni la sesión. Necesitás internet.</p>
+      <div class="cloud-actions">
+        <button type="button" class="btn btn-soft" data-action="force-update">🔄 Actualizar la app</button>
+      </div>
+    </section>
+
     <div class="stat-grid">
       <div class="stat-tile"><strong>${stats.days}</strong><span>días de estudio</span></div>
       <div class="stat-tile"><strong>${stats.accuracy}%</strong><span>aciertos</span></div>

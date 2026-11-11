@@ -426,6 +426,24 @@ function answerGrade(planId, grade) {
   });
 }
 
+async function forceUpdateApp() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+    }
+  } catch (error) {
+    console.warn('No se pudo limpiar la cache', error);
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.set('v', Date.now().toString(36));
+  window.location.replace(url.toString());
+}
+
 function speak(text) {
   if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
     toast('Este dispositivo no puede leer en voz alta', 'warn');
@@ -1075,6 +1093,11 @@ document.addEventListener('click', async (event) => {
       update((s) => { s.perla.activeId = el.dataset.id; });
       render();
       return;
+    case 'force-update': {
+      toast('Actualizando la app…');
+      await forceUpdateApp();
+      return;
+    }
     case 'cloud-signin': {
       const provider = el.dataset.provider || 'google';
       try {
