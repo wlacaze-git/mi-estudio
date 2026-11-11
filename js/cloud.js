@@ -59,6 +59,9 @@ function friendly(error) {
   if (/flow state|code verifier|invalid request|code challenge|invalid grant/i.test(message)) {
     return 'No se pudo completar el login (código vencido o abierto en otra ventana). Probá de nuevo desde esta misma ventana.';
   }
+  if (/function not found|failed to send a request|404/i.test(message)) {
+    return 'La función de IA no está publicada en Supabase todavía.';
+  }
   if (/row-level security|permission denied|401|403|JWT/i.test(message)) {
     return 'No hay permiso para eso en la nube. Revisá las reglas RLS del SQL.';
   }
@@ -220,8 +223,19 @@ export async function syncOnLogin() {
   if (!(await remoteExists())) await pushNow().catch(() => {});
 }
 
-export async function pushNow() {
+export async function analizarFoto(dataUrl, mode = 'apunte', extra = {}) {
   await initCloud();
+  if (!client) throw new Error('La nube no está disponible en este momento.');
+  if (!cloud.user) throw new Error('Entrá con tu cuenta para usar la IA.');
+  const { data, error } = await client.functions.invoke('procesar-foto', {
+    body: { image: dataUrl, mode, ...extra },
+  });
+  if (error) throw new Error(friendly(error));
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
+
+export async function pushNow() {  await initCloud();
   if (!client) throw new Error('La nube no está disponible en este momento.');
   checkProfile();
   cloud.status = 'syncing';

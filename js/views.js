@@ -527,6 +527,7 @@ export function renderHorario(state, { today }) {
               Cambiar foto
               <input type="file" accept="image/*" data-role="schedule-photo">
             </label>
+            <button type="button" class="btn btn-soft btn-small" data-action="ai-schedule">✨ Leer con IA</button>
             <button type="button" class="btn btn-danger btn-small" data-action="delete-schedule-photo">Quitar</button>
           </div>
         </div>`
@@ -1156,7 +1157,8 @@ export function renderNoteForm(state, { note = null, subjectId = '' } = {}) {
           <input type="file" accept="image/*" multiple data-role="note-photo" hidden>
           <span class="btn btn-soft btn-small">📷 Agregar foto</span>
         </label>
-        <small class="hint">Podés sacar una foto en el momento o elegir de la galería. Se achican solas para ocupar poco lugar.</small>
+        <button type="button" class="btn btn-soft btn-small" data-action="ai-note">✨ Leer la foto con IA</button>
+        <small class="hint">Podés sacar una foto en el momento o elegir de la galería. Se achican solas para ocupar poco lugar. “Leer con IA” completa el texto y el resumen desde la primera foto.</small>
       </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-plain" data-action="close-modal">Cancelar</button>
@@ -1821,8 +1823,33 @@ export function renderConfirm({ title, text, confirmLabel = 'Borrar', action, id
 
 
 
-/* ========================= MY PERLA ========================= */
+export function renderAIHorario(clases) {
+  const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+  return `
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow">IA</p>
+        <h2>Horario leído</h2>
+      </div>
+      <button type="button" class="icon-btn" data-action="close-modal" aria-label="Cerrar">✕</button>
+    </div>
+    <p class="muted small">Revisá que esté bien antes de agregarlo. Las materias nuevas se crean solas.</p>
+    <ul class="ai-classes">
+      ${clases.map((clase) => `
+        <li>
+          <span class="ai-day">${days[clase.dia - 1] || 'Día ' + clase.dia}</span>
+          <span class="ai-time">${esc(clase.inicio)}–${esc(clase.fin)}</span>
+          <span class="ai-subject">${esc(clase.materia)}</span>
+          ${clase.profesor ? `<span class="ai-teacher">${esc(clase.profesor)}</span>` : ''}
+        </li>`).join('')}
+    </ul>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-plain" data-action="close-modal">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-action="ai-import-horario">Agregar ${clases.length} ${clases.length === 1 ? 'clase' : 'clases'}</button>
+    </div>`;
+}
 
+/* ========================= MY PERLA ========================= */
 function perlaAttachments(message) {
   const images = message.images || [];
   const notes = message.notes || [];

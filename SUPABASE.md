@@ -123,6 +123,39 @@ respuesta JSON: texto, temas, resumen, preguntas
 
 ---
 
+## IA con Gemini (fotos → texto, resumen y preguntas)
+
+La app ya tiene los botones **“Leer con IA”** en la foto del horario y en el formulario de apuntes. Falta publicar la función y cargar la clave.
+
+### 1. Sacar la API key de Gemini (gratis)
+
+1. Entrar a <https://aistudio.google.com/apikey>.
+2. **Create API key** → elegir el proyecto → copiar la clave (`AIza...`).
+
+### 2. Guardarla como secreto en Supabase
+
+1. Supabase → **Edge Functions → Secrets** (o **Project Settings → Edge Functions**).
+2. **Add new secret**: nombre `GEMINI_API_KEY`, valor la clave.
+3. Guardar. Opcional: `GEMINI_MODEL` = `gemini-2.5-flash` (si querés otro modelo).
+
+### 3. Publicar la función
+
+1. Supabase → **Edge Functions → Create function**.
+2. Nombre: **`procesar-foto`** (exacto).
+3. Pegar el contenido de [`supabase/functions/procesar-foto/index.ts`](supabase/functions/procesar-foto/index.ts).
+4. Dejar **Verify JWT** activado (la app manda el token del usuario).
+5. **Deploy**.
+
+### 4. Probar
+
+- **Horario**: subir la foto y tocar **“Leer con IA”** → muestra las clases leídas → **Agregar**.
+- **Apuntes**: agregar una foto y tocar **“Leer la foto con IA”** → completa el texto y el resumen.
+- Si falta la clave o la función, la app muestra el error exacto.
+
+Con 10 personas, la cuota gratuita de Gemini y las 500.000 invocaciones de Edge Functions sobran. Si Gemini limita por minuto, la app avisa para reintentar.
+
+---
+
 ## Lo que falta del lado de la app
 
 1. `js/cloud.js`: cliente de Supabase (CDN, sin build), login/logout, sync y subida de fotos.

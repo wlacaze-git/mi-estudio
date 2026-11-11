@@ -15,7 +15,7 @@ import {
 } from './js/ui.js';
 import { animalAvatar, animalForLevel, orderedAnimals } from './js/animals.js';
 import { buildReply, gradeQuestion, welcomeText } from './js/perla.js';
-import { authUrlError, bindToCurrentProfile, downloadNow, initCloud, onCloudChange, pushNow, schedulePush, signIn, signOut } from './js/cloud.js';
+import { analizarFoto, authUrlError, bindToCurrentProfile, downloadNow, initCloud, onCloudChange, pushNow, schedulePush, signIn, signOut } from './js/cloud.js';
 import {
   blobToDataURL, dataURLToBlob, deleteImage, deleteImages, getImageBlob,
   hydrate, imageUrl, putImage, saveFile,
@@ -71,6 +71,7 @@ let recordedSessions = new Set();
 let noteDraft = null;
 let planDraft = null;
 let perlaDraft = { images: [], notes: [], youtube: [] };
+let aiDraft = null;
 
 /* ----------------------------- Render ----------------------------- */
 
@@ -240,6 +241,9 @@ function showModal(kind, payload = {}) {
   } else if (kind === 'grade') {
     html = views.renderGradeModal(payload.plan);
     label = 'Nota del examen';
+  } else if (kind === 'ai-horario') {
+    html = views.renderAIHorario(payload.clases);
+    label = 'Horario leído con IA';
   } else if (kind === 'onboarding') {
     html = views.renderOnboarding();
     label = 'Bienvenida';
@@ -432,6 +436,56 @@ function speak(text) {
   utterance.lang = 'es-ES';
   utterance.rate = 0.98;
   window.speechSynthesis.speak(utterance);
+}
+
+function normalizeTime(value) {
+  const match = String(value || '').match(/(\d{1,2})[:.]?(\d{2})?/);
+  if (!match) return '';
+  const hours = Math.min(23, Math.max(0, Number(match[1])));
+  const minutes = Math.min(59, Math.max(0, Number(match[2] || 0)));
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function importAIHorario(clases) {
+  const entries = clases
+    .map((clase) => ({
+      day: Number(clase.dia),
+      start: normalizeTime(clase.inicio),
+      end: normalizeTime(clase.fin),
+      subjectName: String(clase.materia || '').trim(),
+      teacher: String(clase.profesor || '').trim(),
+    }))
+    .filter((entry) => entry.day >= 1 && entry.day <= 5 && entry.start && entry.end && entry.subjectName);
+
+  let created = 0;
+  update((s) => {
+    s.schedule = s.schedule || [];
+    for (const entry of entries) {
+      let subject = s.subjects.find((sub) => sub.name.toLowerCase() === entry.subjectName.toLowerCase());
+      if (!subject) {
+        subject = {
+          id: uid('sub'),
+          name: entry.subjectName,
+          emoji: '📘',
+          color: SUBJECT_COLORS[s.subjects.length % SUBJECT_COLORS.length],
+        };
+        s.subjects.push(subject);
+      }
+      const duplicate = s.schedule.some((c) => Number(c.day) === entry.day && c.start === entry.start && c.subjectId === subject.id);
+      if (duplicate) continue;
+      s.schedule.push({
+        id: uid('c'),
+        subjectId: subject.id,
+        day: entry.day,
+        start: entry.start,
+        end: entry.end,
+        teacher: entry.teacher,
+        room: '',
+      });
+      created += 1;
+    }
+  });
+  return created;
 }
 
 function openLightbox(url) {
@@ -1031,6 +1085,56 @@ document.addEventListener('click', async (event) => {
       toast('Este perfil ahora sincroniza');
       render();
       return;
+    case 'ai-schedule': {
+      const photoId = getState().schedulePhotoId;
+      if (!photoId) { toast('Primero subí la foto del horario', 'warn'); return; }
+      try {
+        const blob = await getImageBlob(photoId);
+        if (!blob) { toast('No encontré la foto del horario', 'warn'); return; }
+        toast('Leyendo la foto con IA…');
+        const data = await analizarFoto(await blobToDataURL(blob), 'horario');
+        const clases = (data.clases || []).filter((clase) => Number(clase.dia) >= 1 && Number(clase.dia) <= 5 && String(clase.materia || '').trim());
+        if (!clases.length) {
+          toast('No pude leer clases en esa foto. Probá con una más clara o usá “Importar texto”.', 'warn');
+          return;
+        }
+        aiDraft = { clases };
+        showModal('ai-horario', { clases });
+      } catch (error) {
+        toast(error.message || 'La IA no pudo leer la foto', 'warn');
+      }
+      return;
+    }
+    case 'ai-import-horario': {
+      if (!aiDraft || !aiDraft.clases.length) { closeModal(); return; }
+      const created = importAIHorario(aiDraft.clases);
+      aiDraft = null;
+      closeModal();
+      toast(created ? `${created} ${created === 1 ? 'clase agregada' : 'clases agregadas'}` : 'No había clases nuevas');
+      return;
+    }
+    case 'ai-note': {
+      const ids = noteDraft ? [...noteDraft.ids] : [];
+      if (!ids.length) { toast('Agregá una foto primero', 'warn'); return; }
+      try {
+        const blob = await getImageBlob(ids[0]);
+        if (!blob) { toast('No encontré la foto', 'warn'); return; }
+        toast('Leyendo la foto con IA…');
+        const data = await analizarFoto(await blobToDataURL(blob), 'apunte');
+        const form = document.querySelector('form[data-form="note"]');
+        if (form) {
+          const text = [data.texto, data.resumen ? `Resumen:\n${data.resumen}` : ''].filter(Boolean).join('\n\n');
+          const body = form.querySelector('textarea[name="body"]');
+          if (body && text) body.value = body.value.trim() ? `${body.value.trim()}\n\n${text}` : text;
+          const title = form.querySelector('input[name="title"]');
+          if (title && !title.value && data.temas && data.temas[0]) title.value = data.temas[0];
+        }
+        toast('Listo: texto y resumen cargados');
+      } catch (error) {
+        toast(error.message || 'La IA no pudo leer la foto', 'warn');
+      }
+      return;
+    }
     case 'perla-quick':
       sendPerla(el.dataset.text || '');
       return;

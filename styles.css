@@ -2241,3 +2241,10 @@ input, textarea, select, button { font-family: inherit; }
 
 .onboarding-cloud { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line-strong); text-align: center; }
 .onboarding-or { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+.ai-classes { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; margin: 12px 0; }
+.ai-classes li { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fffafc; }
+.ai-day { min-width: 80px; font-weight: 750; color: var(--primary-dark); }
+.ai-time { font-variant-numeric: tabular-nums; color: var(--text-soft); }
+.ai-subject { font-weight: 650; }
+.ai-teacher { margin-left: auto; color: var(--muted); font-size: 0.82rem; }
