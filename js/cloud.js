@@ -56,6 +56,9 @@ function friendly(error) {
   if (/paus|540|503|failed to fetch|network|load failed/i.test(message)) {
     return 'La nube no está disponible ahora. Si el proyecto está pausado, reactivalo en supabase.com y volvé a intentar.';
   }
+  if (/flow state|code verifier|invalid request|code challenge|invalid grant/i.test(message)) {
+    return 'No se pudo completar el login (código vencido o abierto en otra ventana). Probá de nuevo desde esta misma ventana.';
+  }
   if (/row-level security|permission denied|401|403|JWT/i.test(message)) {
     return 'No hay permiso para eso en la nube. Revisá las reglas RLS del SQL.';
   }
@@ -65,6 +68,36 @@ function friendly(error) {
 function isLocalEmpty() {
   const s = getState();
   return !(s.attempts || []).length && !(s.daysStudied || []).length && !(s.xp || 0);
+}
+
+async function handleAuthCallback() {
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const errorDescription = search.get('error_description') || hash.get('error_description') || search.get('error') || hash.get('error');
+  if (errorDescription) {
+    window.history.replaceState(null, '', window.location.pathname);
+    throw new Error(errorDescription.replace(/\+/g, ' '));
+  }
+  const code = search.get('code');
+  if (code) {
+    const { data, error } = await client.auth.exchangeCodeForSession(code);
+    window.history.replaceState(null, '', window.location.pathname);
+    if (error) throw error;
+    if (data && data.session) cloud.user = data.session.user;
+    return true;
+  }
+  const accessToken = hash.get('access_token');
+  if (accessToken) {
+    const { data, error } = await client.auth.setSession({
+      access_token: accessToken,
+      refresh_token: hash.get('refresh_token') || '',
+    });
+    window.history.replaceState(null, '', window.location.pathname);
+    if (error) throw error;
+    if (data && data.session) cloud.user = data.session.user;
+    return true;
+  }
+  return false;
 }
 
 async function waitForVendor(timeout = 4000) {
@@ -93,8 +126,9 @@ export async function initCloud() {
         return null;
       }
       client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' },
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, flowType: 'pkce' },
       });
+      await handleAuthCallback();
       client.auth.onAuthStateChange((event, session) => {
         cloud.user = session ? session.user : null;
         if (cloud.user) {
