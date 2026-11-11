@@ -15,9 +15,9 @@ import {
 } from './js/ui.js';
 import { animalAvatar, animalForLevel, orderedAnimals } from './js/animals.js';
 import { buildReply, gradeQuestion, welcomeText } from './js/perla.js';
-import { analizarFoto, authUrlError, bindToCurrentProfile, downloadNow, generarPreguntas, initCloud, onCloudChange, pushNow, schedulePush, signIn, signOut } from './js/cloud.js';
+import { analizarFoto, authUrlError, bindToCurrentProfile, downloadNow, explicar, generarPreguntas, initCloud, onCloudChange, pushNow, schedulePush, signIn, signOut } from './js/cloud.js';
 import {
-  blobToDataURL, dataURLToBlob, deleteImage, deleteImages, getImageBlob,
+  blobToDataURL, compressImage, dataURLToBlob, deleteImage, deleteImages, getImageBlob,
   hydrate, imageUrl, putImage, saveFile,
 } from './js/images.js';
 import * as views from './js/views.js';
@@ -488,6 +488,23 @@ function importAIHorario(clases) {
   return created;
 }
 
+function pizarraContext() {
+  const plan = getState().exams.find((item) => item.id === route.planId);
+  if (!plan) return {};
+  const station = planStations(plan).stations.find((item) => item.key === route.stationKey);
+  return { plan, station };
+}
+
+function showPizarraAI(text) {
+  const board = document.getElementById('pizarra-ai-board');
+  const target = document.getElementById('pizarra-ai-text');
+  if (!board || !target) return;
+  board.hidden = false;
+  target.textContent = text;
+  board.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  speak(text);
+}
+
 function openLightbox(url) {
   if (!url) return;
   document.getElementById('lightbox')?.remove();
@@ -727,6 +744,16 @@ document.addEventListener('click', async (event) => {
       const text = (box && box.innerText || '').trim();
       if (!text) {
         toast('No hay texto para leer todavía', 'warn');
+        return;
+      }
+      speak(text);
+      return;
+    }
+    case 'read-ai': {
+      const target = document.getElementById('pizarra-ai-text');
+      const text = target ? target.textContent.trim() : '';
+      if (!text) {
+        toast('Todavía no hay una explicación de la IA', 'warn');
         return;
       }
       speak(text);
@@ -1401,7 +1428,7 @@ document.addEventListener('click', async (event) => {
 
 /* ------------------------------ Forms ------------------------------ */
 
-document.addEventListener('submit', (event) => {
+document.addEventListener('submit', async (event) => {
   const form = event.target.closest('form[data-form]');
   if (!form) return;
   event.preventDefault();
@@ -1637,6 +1664,43 @@ document.addEventListener('submit', (event) => {
     return;
   }
 
+  if (kind === 'pizarra-ai') {
+    const question = String(data.get('question') || '').trim();
+    const { plan, station } = pizarraContext();
+    if (!plan || !station) {
+      toast('Abrí una estación para pedir una explicación', 'warn');
+      return;
+    }
+    const current = getState();
+    const subject = current.subjects.find((item) => item.id === plan.subjectId);
+    const notes = (current.notes || []).filter((note) => note.subjectId === plan.subjectId);
+    const topic = String(station.topic || '').toLowerCase();
+    const matching = notes.filter((note) => `${note.title} ${note.body}`.toLowerCase().includes(topic));
+    const source = (matching.length ? matching : notes)
+      .map((note) => `${note.title}\n${note.body}`)
+      .join('\n\n')
+      .slice(0, 12000);
+    const texto = [
+      subject ? `Materia: ${subject.name}` : '',
+      `Tema: ${station.topic}`,
+      question ? `Pregunta: ${question}` : 'Explicame este tema.',
+      source ? `Apuntes:\n${source}` : '',
+    ].filter(Boolean).join('\n\n');
+    toast('Pensando la explicación…');
+    try {
+      const result = await explicar({ texto });
+      const explanation = String(result.explicacion || '').trim();
+      if (!explanation) {
+        toast('La IA no devolvió una explicación', 'warn');
+        return;
+      }
+      showPizarraAI(explanation);
+    } catch (error) {
+      toast(error.message || 'No se pudo generar la explicación', 'warn');
+    }
+    return;
+  }
+
   if (kind === 'youtube') {
     const url = String(data.get('url') || '').trim();
     const title = String(data.get('title') || '').trim();
@@ -1830,6 +1894,29 @@ document.addEventListener('change', async (event) => {
   } catch (err) {
     console.error(err);
     toast('No pude subir esa foto', 'warn');
+  }
+});
+
+// Foto para que la pizarra explique.
+document.addEventListener('change', async (event) => {
+  const input = event.target.closest('input[data-role="pizarra-photo"]');
+  if (!input) return;
+  const file = (input.files || [])[0];
+  input.value = '';
+  if (!file) return;
+  try {
+    const { blob } = await compressImage(file);
+    const dataUrl = await blobToDataURL(blob);
+    toast('Mirando la foto…');
+    const result = await analizarFoto(dataUrl, 'explicacion');
+    const explanation = String(result.explicacion || '').trim();
+    if (!explanation) {
+      toast('La IA no devolvió una explicación', 'warn');
+      return;
+    }
+    showPizarraAI(explanation);
+  } catch (error) {
+    toast(error.message || 'No se pudo leer la foto', 'warn');
   }
 });
 

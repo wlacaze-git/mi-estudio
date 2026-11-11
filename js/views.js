@@ -2251,6 +2251,28 @@ export function renderPizarra(state, plan, station) {
         <button type="button" class="btn btn-plain" data-action="stop-reading">Parar</button>
         <button type="button" class="btn btn-soft" data-action="start-station" data-plan="${esc(plan.id)}" data-key="${esc(station.key)}">Empezar las ${count} preguntas</button>
       </div>
+
+      <form class="pizarra-ask" data-form="pizarra-ai">
+        <label class="pizarra-ask-label" for="pizarra-question">Preguntale a la pizarra</label>
+        <div class="pizarra-ask-row">
+          <input id="pizarra-question" name="question" type="text" maxlength="200" placeholder="Ej.: explicame las fracciones equivalentes">
+          <button type="submit" class="btn btn-primary">✨ Explicar</button>
+          <label class="btn btn-soft file-btn">
+            📷 Foto
+            <input type="file" accept="image/*" data-role="pizarra-photo" hidden>
+          </label>
+        </div>
+        <small class="muted">La IA usa tus apuntes y lo que preguntes. También puede mirar una foto.</small>
+      </form>
+
+      <div class="pizarra pizarra-ai-board" id="pizarra-ai-board" hidden>
+        <p class="pizarra-eyebrow">Explicación de la IA</p>
+        <div class="pizarra-body" id="pizarra-ai-text"></div>
+        <div class="pizarra-actions">
+          <button type="button" class="btn btn-primary" data-action="read-ai">🔊 Leer la explicación</button>
+          <button type="button" class="btn btn-plain" data-action="stop-reading">Parar</button>
+        </div>
+      </div>
     </section>
   `;
 }

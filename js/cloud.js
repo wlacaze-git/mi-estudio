@@ -256,6 +256,10 @@ export async function generarPreguntas({ texto = '', materia = '', tema = '', co
   return invokeAI({ text: content, mode: 'preguntas', count });
 }
 
+export async function explicar({ texto = '' }) {
+  return invokeAI({ text: texto, mode: 'explicacion' });
+}
+
 export async function pushNow() {
   await initCloud();
   if (!client) throw new Error('La nube no está disponible en este momento.');

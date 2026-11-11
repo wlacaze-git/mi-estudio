@@ -2248,3 +2248,9 @@ input, textarea, select, button { font-family: inherit; }
 .ai-time { font-variant-numeric: tabular-nums; color: var(--text-soft); }
 .ai-subject { font-weight: 650; }
 .ai-teacher { margin-left: auto; color: var(--muted); font-size: 0.82rem; }
+
+.pizarra-ask { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; padding: 16px; background: #fffafc; border: 1px solid var(--line); border-radius: 16px; }
+.pizarra-ask-label { font-weight: 700; }
+.pizarra-ask-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.pizarra-ask-row input { flex: 1 1 240px; min-width: 0; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--line-strong); font-size: 0.95rem; }
+.pizarra-ai-board { margin-top: 18px; }
