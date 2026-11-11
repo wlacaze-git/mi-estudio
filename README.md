@@ -191,6 +191,7 @@ Si la materia tiene pocas preguntas cargadas, la estación repite algunas para l
 - **Recordatorios en Hoy**: además de lo de hoy, se ven los próximos 7 días con sus tareas (se marcan hechas/pendientes) y los exámenes/tests de todas las materias.
 - **Barra para el teléfono**: en pantallas chicas las secciones pasan a una barra inferior con iconos y nombres cortos; en iPad y computadora siguen arriba.
 - **Pizarra y lectura en voz alta**: cada estación tiene “Ver en pizarra” y “Escuchar” (voz del dispositivo) para leer la lección.
+- **Leer fotos con IA**: la foto del horario se convierte en clases (con vista previa antes de agregar) y las fotos de apuntes completan texto y resumen. Usa Gemini a través de una Edge Function de Supabase (la clave nunca va en la app).
 
 | Móvil | Perfil y animales | Chats de Perla | Pizarra |
 | --- | --- | --- | --- |
@@ -198,7 +199,7 @@ Si la materia tiene pocas preguntas cargadas, la estación repite algunas para l
 
 ### Pendiente de definir
 
-- **Leer la foto del horario con IA** y **explicaciones generadas con IA**: necesitan una API key (OpenAI/Gemini) o un servidor; por ahora la foto se guarda y la carga es con “Importar texto”.
+- **Ampliar la IA**: leer las fotos de los planes para sacar temas solos, explicaciones generadas en la pizarra y preguntas nuevas para las estaciones.
 - **Iniciar sesión con Google/Apple y sincronizar entre dispositivos**: necesita backend y cuentas de desarrollador.
 - **Animales nuevos**: hoy se eligen entre los 8 dibujados; sumar otros requiere ilustrarlos.
 

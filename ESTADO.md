@@ -12,7 +12,14 @@
 **Código:** `js/config.js` (URL + publishable key), `js/cloud.js` (login, push/pull, fotos), tarjeta “Nube” en Perfil. Supabase JS vendorizado en `vendor/supabase.js`.
 **Estado (11/11, mediodía):** ✅ login con Google y sincronización funcionando. La fila de `estados` guarda el JSON del perfil activo (XP, nivel, racha, intentos, materias, preguntas y estadísticas, planes/exámenes con fechas y temas, notas, horario, chats de Perla, ajustes) y el bucket `fotos` guarda las imágenes. Se sincroniza solo a los 3 s de cada cambio; “Guardar ahora” fuerza y “Bajar de la nube” restaura en otro dispositivo.
 
-**Siguiente:** publicar la Edge Function `procesar-foto` y cargar `GEMINI_API_KEY` (ver [SUPABASE.md](SUPABASE.md)). La app ya tiene los botones “Leer con IA” para la foto del horario y las fotos de apuntes. Apple login cuando se decida pagar Apple Developer.
+**Estado (11/11, tarde):** ✅ login con Google, sincronización y **IA de fotos funcionando**. La función `procesar-foto` (Gemini 3.8 Flash) lee la foto del horario y devuelve las clases (con vista previa antes de agregarlas), y lee fotos de apuntes para completar texto + resumen. Incluye reintentos automáticos si Gemini está saturado y mensajes de error claros.
+
+**Siguiente (a elección):**
+1. Fotos del plan → temas automáticos.
+2. Explicaciones con IA en la pizarra (texto + voz).
+3. Generar preguntas para las estaciones a partir de los apuntes.
+4. Apple login (requiere Apple Developer, 99 USD/año).
+5. Rotar la secret key que se compartió por chat (pendiente de seguridad).
 
 **Falta (bloqueante):**
 1. Correr [`supabase/schema.sql`](supabase/schema.sql) en el SQL Editor (la tabla `estados` no existe todavía).
