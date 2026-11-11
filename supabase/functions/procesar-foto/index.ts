@@ -113,9 +113,13 @@ async function requireUser(req: Request): Promise<boolean> {
   const token = auth.replace(/^Bearer\s+/i, "").trim();
   if (!token) return false;
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://ownqsuajfdckytssajiq.supabase.co";
+  const apikey = req.headers.get("apikey")
+    || Deno.env.get("SUPABASE_ANON_KEY")
+    || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")
+    || "sb_publishable_rMWlFgo6GMlFBLL29qAkNg_nlo3e6Ce";
   try {
     const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, apikey },
     });
     return res.ok;
   } catch {
