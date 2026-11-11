@@ -2172,6 +2172,7 @@ export function renderCamino(state, plan, { today }) {
               <small>${station.final ? 'Repaso de todo: todas las preguntas del plan.' : 'Primero la lección, después las preguntas.'}</small>
               <div class="path-actions">
                 <button type="button" class="btn ${station.done ? 'btn-plain' : 'btn-soft'} btn-small" data-action="open-station" data-plan="${esc(plan.id)}" data-key="${esc(station.key)}">${station.done ? 'Repetir' : 'Empezar'}</button>
+                <button type="button" class="btn btn-plain btn-small" data-action="open-pizarra" data-plan="${esc(plan.id)}" data-key="${esc(station.key)}">Pizarra</button>
                 ${Number.isFinite(station.score) ? `<span class="pill">${station.score}%</span>` : ''}
               </div>
             </div>
