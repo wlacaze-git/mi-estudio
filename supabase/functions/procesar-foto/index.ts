@@ -136,7 +136,19 @@ function hasUserToken(req: Request): boolean {
 
 async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-  if (req.method === "GET") return json({ ok: true, model: MODEL }, 200);
+  if (req.method === "GET") {
+    const url = new URL(req.url);
+    if (url.searchParams.get("models")) {
+      const key = Deno.env.get("GEMINI_API_KEY");
+      if (!key) return json({ error: "Falta configurar GEMINI_API_KEY" }, 500);
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models", {
+        headers: { "x-goog-api-key": key },
+      });
+      const data = await res.json().catch(() => ({}));
+      return json(data, res.status);
+    }
+    return json({ ok: true, model: MODEL }, 200);
+  }
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
   if (!hasUserToken(req)) return json({ error: "Entrá con tu cuenta para usar la IA" }, 401);
 
@@ -181,7 +193,7 @@ async function handler(req: Request): Promise<Response> {
     };
 
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-    const delays = [0, 1500];
+    const delays = [0];
     let res: Response | undefined;
     let response: any = {};
     for (let attempt = 0; attempt < delays.length; attempt += 1) {
@@ -191,12 +203,13 @@ async function handler(req: Request): Promise<Response> {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": key },
           body: JSON.stringify(payload),
-        }, 20000);
+        }, 60000);
         response = await res.json().catch(() => ({}));
       } catch {
         response = { error: { message: "timeout" } };
         break;
       }
+      console.log("gemini", MODEL, res.status);
       if (res.ok) break;
       const message = response?.error?.message || "";
       const overloaded = res.status === 429 || res.status === 503
