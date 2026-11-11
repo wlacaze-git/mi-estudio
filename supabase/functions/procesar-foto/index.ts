@@ -12,7 +12,7 @@ const CORS = {
 };
 
 const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY") || "";
-const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-4o-mini";
+const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-4.1-mini";
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY") || "";
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.8-flash";
 const PROVIDER = OPENAI_KEY ? "openai" : "gemini";

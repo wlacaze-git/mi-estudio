@@ -133,7 +133,7 @@ La función usa **OpenAI** si existe OPENAI_API_KEY; si no, usa **Gemini** con G
 
 1. <https://platform.openai.com/api-keys> → **Create new secret key**.
 2. Supabase → **Edge Functions → Secrets**: OPENAI_API_KEY = sk-....
-3. Opcional: OPENAI_MODEL = gpt-4o-mini (por defecto), o gpt-4.1-mini / gpt-5-mini si querés más calidad.
+3. Opcional: OPENAI_MODEL = gpt-4.1-mini (por defecto y recomendado), o gpt-4o-mini si querés el más barato, o gpt-5-mini para más calidad.
 4. Poné un límite de gasto en OpenAI (ej. 5 USD/mes).
 
 ### Opción Gemini (gratis)
