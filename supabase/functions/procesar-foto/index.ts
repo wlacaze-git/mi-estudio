@@ -1,9 +1,9 @@
 // Edge Function: procesar-foto
-// Recibe una imagen (data URL) o un texto y un modo, llama a Gemini y devuelve JSON.
-// La clave GEMINI_API_KEY se configura como secreto en Supabase, nunca en la app.
+// Recibe una imagen (data URL) o un texto y un modo, y devuelve JSON.
+// Proveedor: OpenAI si existe OPENAI_API_KEY; si no, Gemini.
+// Las claves se configuran como secretos en Supabase, nunca en la app.
 //
 // Modos: "horario" | "apunte" | "preguntas" | "explicacion"
-// Formato nuevo de Supabase Edge Functions (export default con fetch).
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -11,7 +11,17 @@ const CORS = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-const MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.8-flash";
+const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY") || "";
+const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-4o-mini";
+const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY") || "";
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.8-flash";
+const PROVIDER = OPENAI_KEY ? "openai" : "gemini";
+const MODEL = PROVIDER === "openai" ? OPENAI_MODEL : GEMINI_MODEL;
+
+const PROJECT_URL = (Deno.env.get("SUPABASE_URL") || "https://ownqsuajfdckytssajiq.supabase.co").replace(/\/$/, "");
+const PUBLISHABLE_KEY = Deno.env.get("SUPABASE_PUBLISHABLE_KEY")
+  || Deno.env.get("SUPABASE_ANON_KEY")
+  || "sb_publishable_rMWlFgo6GMlFBLL29qAkNg_nlo3e6Ce";
 
 const PROMPTS: Record<string, string> = {
   horario: `Sos un asistente que lee la foto de un horario escolar.
@@ -30,7 +40,7 @@ Si la foto no tiene texto legible, explicá brevemente qué se ve en "texto".`,
 - 4 opciones por pregunta, una sola correcta (índice 0 a 3).
 - Una explicación breve de por qué es correcta.
 - Dificultad adecuada para secundaria. No inventes datos que no estén en el contenido.`,
-  explicacion: `Explicá el tema de la foto para una estudiante de secundaria.
+  explicacion: `Explicá el tema (de la foto o del texto) para una estudiante de secundaria.
 - Claro, paso a paso, con un ejemplo cotidiano.
 - Máximo 250 palabras.
 - Si la foto es un ejercicio, resolvelo explicando el razonamiento.`,
@@ -108,7 +118,7 @@ function parseJson(text: string) {
   }
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit, ms: number) {
+async function fetchWithTimeout(url: string, options: RequestInit, ms: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   try {
@@ -118,10 +128,7 @@ async function fetchWithTimeout(url: string, options: RequestInit, ms: number) {
   }
 }
 
-const PROJECT_URL = (Deno.env.get("SUPABASE_URL") || "https://ownqsuajfdckytssajiq.supabase.co").replace(/\/$/, "");
-const PUBLISHABLE_KEY = Deno.env.get("SUPABASE_PUBLISHABLE_KEY")
-  || Deno.env.get("SUPABASE_ANON_KEY")
-  || "sb_publishable_rMWlFgo6GMlFBLL29qAkNg_nlo3e6Ce";
+// ------------------------- Auth (JWT + JWKS) -------------------------
 
 type Jwk = Record<string, unknown>;
 let jwksCache: { keys: Jwk[]; fetchedAt: number } | null = null;
@@ -171,7 +178,7 @@ async function verifyJwt(token: string): Promise<boolean> {
 
     const key = await crypto.subtle.importKey(
       "jwk",
-      jwk,
+      jwk as JsonWebKey,
       { name: "ECDSA", namedCurve: "P-256" },
       false,
       ["verify"],
@@ -187,22 +194,128 @@ async function verifyJwt(token: string): Promise<boolean> {
   }
 }
 
+// ------------------------- Proveedores -------------------------
+
+type ProviderResult = { text?: string; error?: string; status?: number };
+
+async function callOpenAI(prompt: string, inputText: string, image: string, schema: unknown): Promise<ProviderResult> {
+  const content: Array<Record<string, unknown>> = [{
+    type: "text",
+    text: `${prompt}\n\nDevolvé SOLO un JSON válido, con esta forma:\n${JSON.stringify(schema)}`,
+  }];
+  if (inputText) content.push({ type: "text", text: `Contenido:\n${inputText.slice(0, 12000)}` });
+  if (image) content.push({ type: "image_url", image_url: { url: image } });
+
+  try {
+    const res = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENAI_KEY}`,
+      },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        messages: [
+          { role: "system", content: "Sos un asistente de estudio. Respondés únicamente con JSON válido, en español." },
+          { role: "user", content },
+        ],
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+        max_tokens: 3000,
+      }),
+    }, 60000);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { error: data?.error?.message || `Error de OpenAI (${res.status})`, status: res.status };
+    }
+    return { text: data?.choices?.[0]?.message?.content || "" };
+  } catch {
+    return { error: "timeout" };
+  }
+}
+
+async function callGemini(prompt: string, inputText: string, image: string, schema: unknown): Promise<ProviderResult> {
+  const match = image ? image.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/) : null;
+  const mimeType = match ? match[1] : "image/jpeg";
+  const data = match ? match[2] : image;
+
+  const parts: Array<Record<string, unknown>> = [{ text: prompt }];
+  if (inputText) parts.push({ text: `Contenido:\n${inputText.slice(0, 12000)}` });
+  if (image) parts.push({ inlineData: { mimeType, data } });
+
+  const payload = {
+    contents: [{ role: "user", parts }],
+    generationConfig: {
+      temperature: 0.2,
+      responseMimeType: "application/json",
+      responseSchema: schema,
+    },
+  };
+
+  try {
+    const res = await fetchWithTimeout(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_KEY },
+        body: JSON.stringify(payload),
+      },
+      60000,
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { error: data?.error?.message || `Error de Gemini (${res.status})`, status: res.status };
+    }
+    const text = (data?.candidates?.[0]?.content?.parts || [])
+      .map((part: { text?: string }) => part.text || "")
+      .join("");
+    return { text };
+  } catch {
+    return { error: "timeout" };
+  }
+}
+
+function friendlyError(status: number | undefined, message: string) {
+  if (/timeout|abort/i.test(message)) return "La IA tardó demasiado. Probá de nuevo en un minuto.";
+  if (status === 401) return "La clave de OpenAI no es válida o venció.";
+  if (status === 429) return "OpenAI está sin cuota o con demasiadas solicitudes.";
+  if (status === 404) return "El modelo de OpenAI configurado no existe.";
+  if (/high demand|overloaded|try again later|temporar/i.test(message)) {
+    return "La IA está con mucha demanda ahora. Probá de nuevo en un minuto.";
+  }
+  return message || "La IA no respondió.";
+}
+
+// ------------------------- Handler -------------------------
+
 async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+
   if (req.method === "GET") {
     const url = new URL(req.url);
     if (url.searchParams.get("models")) {
-      const key = Deno.env.get("GEMINI_API_KEY");
-      if (!key) return json({ error: "Falta configurar GEMINI_API_KEY" }, 500);
+      if (PROVIDER === "openai") {
+        if (!OPENAI_KEY) return json({ error: "Falta configurar OPENAI_API_KEY" }, 500);
+        const res = await fetch("https://api.openai.com/v1/models", {
+          headers: { Authorization: `Bearer ${OPENAI_KEY}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        const names = Array.isArray(data?.data) ? data.data.map((item: { id?: string }) => item.id) : [];
+        return json({ provider: "openai", models: names }, res.status);
+      }
+      if (!GEMINI_KEY) return json({ error: "Falta configurar GEMINI_API_KEY" }, 500);
       const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models", {
-        headers: { "x-goog-api-key": key },
+        headers: { "x-goog-api-key": GEMINI_KEY },
       });
       const data = await res.json().catch(() => ({}));
-      return json(data, res.status);
+      const names = Array.isArray(data?.models) ? data.models.map((item: { name?: string }) => item.name) : [];
+      return json({ provider: "gemini", models: names }, res.status);
     }
-    return json({ ok: true, model: MODEL }, 200);
+    return json({ ok: true, provider: PROVIDER, model: MODEL }, 200);
   }
+
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
+
   const authHeader = req.headers.get("Authorization") || "";
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
   if (!(await verifyJwt(token))) {
@@ -216,82 +329,28 @@ async function handler(req: Request): Promise<Response> {
     const mode = String(body.mode || "apunte");
     const count = Math.min(Math.max(Number(body.count) || 10, 3), 20);
     const prompt = PROMPTS[mode];
+    const schema = SCHEMAS[mode];
 
     if (!image && !inputText) return json({ error: "Falta la imagen o el texto" }, 400);
     if (mode === "horario" && !image) return json({ error: "El horario necesita una foto" }, 400);
-    if (!prompt) return json({ error: "Modo inválido" }, 400);
-
-    const key = Deno.env.get("GEMINI_API_KEY");
-    if (!key) return json({ error: "Falta configurar GEMINI_API_KEY en Supabase" }, 500);
-
-    const match = image
-      ? image.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/)
-      : null;
-    const mimeType = match ? match[1] : "image/jpeg";
-    const data = match ? match[2] : image;
-
-    if (data && data.length > 12_000_000) return json({ error: "La imagen es demasiado grande" }, 413);
+    if (!prompt || !schema) return json({ error: "Modo inválido" }, 400);
+    if (!image && !inputText) return json({ error: "Falta contenido" }, 400);
 
     const fullPrompt = mode === "preguntas"
       ? `${prompt}\nGenerá exactamente ${count} preguntas.`
       : prompt;
 
-    const parts: Array<Record<string, unknown>> = [{ text: fullPrompt }];
-    if (inputText) parts.push({ text: `Contenido para generar las preguntas:\n${inputText.slice(0, 15000)}` });
-    if (image) parts.push({ inlineData: { mimeType, data } });
+    const result = PROVIDER === "openai"
+      ? await callOpenAI(fullPrompt, inputText, image, schema)
+      : await callGemini(fullPrompt, inputText, image, schema);
 
-    const payload = {
-      contents: [{ role: "user", parts }],
-      generationConfig: {
-        temperature: 0.2,
-        responseMimeType: "application/json",
-        responseSchema: SCHEMAS[mode],
-      },
-    };
-
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-    const delays = [0];
-    let res: Response | undefined;
-    let response: any = {};
-    for (let attempt = 0; attempt < delays.length; attempt += 1) {
-      if (delays[attempt]) await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
-      try {
-        res = await fetchWithTimeout(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-          body: JSON.stringify(payload),
-        }, 60000);
-        response = await res.json().catch(() => ({}));
-      } catch {
-        response = { error: { message: "timeout" } };
-        break;
-      }
-      console.log("gemini", MODEL, res.status);
-      if (res.ok) break;
-      const message = response?.error?.message || "";
-      const overloaded = res.status === 429 || res.status === 503
-        || /high demand|overloaded|try again later|temporar/i.test(message);
-      if (!overloaded || attempt === delays.length - 1) break;
+    if (result.error) {
+      return json({ error: friendlyError(result.status, result.error) }, 502);
     }
+    if (!result.text) return json({ error: "La IA no devolvió contenido" }, 502);
 
-    if (!res || !res.ok) {
-      const message = response?.error?.message || `Error de Gemini (${res ? res.status : "sin respuesta"})`;
-      const friendly = /timeout|abort/i.test(message)
-        ? "La IA tardó demasiado. Probá de nuevo en un minuto."
-        : /high demand|overloaded|try again later|temporar/i.test(message)
-          || (res && (res.status === 429 || res.status === 503))
-          ? "La IA está con mucha demanda ahora. Probá de nuevo en un minuto."
-          : message;
-      return json({ error: friendly }, 502);
-    }
-
-    const resultText = (response?.candidates?.[0]?.content?.parts || [])
-      .map((part: { text?: string }) => part.text || "")
-      .join("");
-    if (!resultText) return json({ error: "La IA no devolvió contenido" }, 502);
-
-    const parsed = parseJson(resultText);
-    return json({ ...parsed, mode, model: MODEL }, 200);
+    const parsed = parseJson(result.text);
+    return json({ ...parsed, mode, provider: PROVIDER, model: MODEL }, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return json({ error: message }, 500);
