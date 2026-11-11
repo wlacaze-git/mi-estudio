@@ -2254,3 +2254,5 @@ input, textarea, select, button { font-family: inherit; }
 .pizarra-ask-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .pizarra-ask-row input { flex: 1 1 240px; min-width: 0; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--line-strong); font-size: 0.95rem; }
 .pizarra-ai-board { margin-top: 18px; }
+
+#pizarra-ai-text { white-space: pre-wrap; }
