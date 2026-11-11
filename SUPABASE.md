@@ -143,7 +143,7 @@ La app ya tiene los botones **“Leer con IA”** en la foto del horario y en el
 1. Supabase → **Edge Functions → Create function**.
 2. Nombre: **`procesar-foto`** (exacto).
 3. Pegar el contenido de [`supabase/functions/procesar-foto/index.ts`](supabase/functions/procesar-foto/index.ts).
-4. Dejar **Verify JWT** activado (la app manda el token del usuario).
+4. Dejar **Verify JWT con legacy secret APAGADO**: la función valida la sesión por su cuenta (recomendación del propio panel de Supabase).
 5. **Deploy**.
 
 ### 4. Probar

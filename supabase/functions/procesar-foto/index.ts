@@ -108,10 +108,29 @@ function parseJson(text: string) {
   }
 }
 
+async function requireUser(req: Request): Promise<boolean> {
+  const auth = req.headers.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "").trim();
+  if (!token) return false;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://ownqsuajfdckytssajiq.supabase.co";
+  try {
+    const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method === "GET") return json({ ok: true, model: MODEL }, 200);
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
+
+  if (!(await requireUser(req))) {
+    return json({ error: "Entrá con tu cuenta para usar la IA" }, 401);
+  }
 
   try {
     const body = await req.json();
