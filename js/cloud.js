@@ -22,6 +22,16 @@ const cloud = {
   boundProfileId: null,
 };
 
+export function authUrlError() {
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const description = search.get('error_description') || hash.get('error_description')
+    || search.get('error') || hash.get('error');
+  if (!description) return '';
+  window.history.replaceState(null, '', window.location.pathname);
+  return description.replace(/\+/g, ' ');
+}
+
 export function cloudSnapshot() {
   return { ...cloud };
 }
@@ -73,7 +83,7 @@ export async function initCloud() {
         return null;
       }
       client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' },
       });
       client.auth.onAuthStateChange((event, session) => {
         cloud.user = session ? session.user : null;

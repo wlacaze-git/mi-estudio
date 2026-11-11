@@ -15,7 +15,7 @@ import {
 } from './js/ui.js';
 import { animalAvatar, animalForLevel, orderedAnimals } from './js/animals.js';
 import { buildReply, gradeQuestion, welcomeText } from './js/perla.js';
-import { bindToCurrentProfile, downloadNow, initCloud, onCloudChange, pushNow, schedulePush, signIn, signOut } from './js/cloud.js';
+import { authUrlError, bindToCurrentProfile, downloadNow, initCloud, onCloudChange, pushNow, schedulePush, signIn, signOut } from './js/cloud.js';
 import {
   blobToDataURL, dataURLToBlob, deleteImage, deleteImages, getImageBlob,
   hydrate, imageUrl, putImage, saveFile,
