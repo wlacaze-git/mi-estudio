@@ -2264,6 +2264,7 @@ export function renderPizarra(state, plan, station) {
           </label>
         </div>
         <small class="muted">La IA usa tus apuntes y lo que preguntes. También puede mirar una foto.</small>
+        <p class="pizarra-status" id="pizarra-status" role="status"></p>
       </form>
 
       <div class="pizarra pizarra-ai-board" id="pizarra-ai-board" hidden>

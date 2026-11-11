@@ -2256,3 +2256,5 @@ input, textarea, select, button { font-family: inherit; }
 .pizarra-ai-board { margin-top: 18px; }
 
 #pizarra-ai-text { white-space: pre-wrap; }
+
+.pizarra-status { min-height: 1.1em; margin: 4px 0 0; font-size: 0.85rem; color: var(--primary-dark); }

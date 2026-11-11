@@ -495,7 +495,13 @@ function pizarraContext() {
   return { plan, station };
 }
 
+function setPizarraStatus(text) {
+  const target = document.getElementById('pizarra-status');
+  if (target) target.textContent = text || '';
+}
+
 function showPizarraAI(text) {
+  setPizarraStatus('');
   const board = document.getElementById('pizarra-ai-board');
   const target = document.getElementById('pizarra-ai-text');
   if (!board || !target) return;
@@ -1686,17 +1692,19 @@ document.addEventListener('submit', async (event) => {
       question ? `Pregunta: ${question}` : 'Explicame este tema.',
       source ? `Apuntes:\n${source}` : '',
     ].filter(Boolean).join('\n\n');
-    toast('Pensando la explicación…');
+    setPizarraStatus('Pensando la explicación…');
     try {
       const result = await explicar({ texto });
       const explanation = String(result.explicacion || '').trim();
       if (!explanation) {
-        toast('La IA no devolvió una explicación', 'warn');
+        setPizarraStatus('La IA no devolvió una explicación.');
         return;
       }
       showPizarraAI(explanation);
     } catch (error) {
-      toast(error.message || 'No se pudo generar la explicación', 'warn');
+      const message = error.message || 'No se pudo generar la explicación';
+      setPizarraStatus(message);
+      toast(message, 'warn');
     }
     return;
   }
@@ -1907,16 +1915,18 @@ document.addEventListener('change', async (event) => {
   try {
     const { blob } = await compressImage(file);
     const dataUrl = await blobToDataURL(blob);
-    toast('Mirando la foto…');
+    setPizarraStatus('Mirando la foto…');
     const result = await analizarFoto(dataUrl, 'explicacion');
     const explanation = String(result.explicacion || '').trim();
     if (!explanation) {
-      toast('La IA no devolvió una explicación', 'warn');
+      setPizarraStatus('La IA no devolvió una explicación.');
       return;
     }
     showPizarraAI(explanation);
   } catch (error) {
-    toast(error.message || 'No se pudo leer la foto', 'warn');
+    const message = error.message || 'No se pudo leer la foto';
+    setPizarraStatus(message);
+    toast(message, 'warn');
   }
 });
 
