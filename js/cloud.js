@@ -128,7 +128,7 @@ export async function initCloud() {
       client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, flowType: 'pkce' },
       });
-      await handleAuthCallback();
+      const handled = await handleAuthCallback();
       client.auth.onAuthStateChange((event, session) => {
         cloud.user = session ? session.user : null;
         if (cloud.user) {
@@ -141,7 +141,8 @@ export async function initCloud() {
         emit();
       });
       const { data } = await client.auth.getSession();
-      cloud.user = data.session ? data.session.user : null;
+      const storedUser = data.session ? data.session.user : null;
+      cloud.user = storedUser || (handled ? cloud.user : null);
       if (cloud.user) {
         cloud.boundProfileId = localStorage.getItem(BOUND_KEY) || activeProfileId();
         localStorage.setItem(BOUND_KEY, cloud.boundProfileId);
