@@ -12,7 +12,11 @@
 **Código:** `js/config.js` (URL + publishable key), `js/cloud.js` (login, push/pull, fotos), tarjeta “Nube” en Perfil. Supabase JS vendorizado en `vendor/supabase.js`.
 **Estado (11/11, mediodía):** ✅ login con Google y sincronización funcionando. La fila de `estados` guarda el JSON del perfil activo (XP, nivel, racha, intentos, materias, preguntas y estadísticas, planes/exámenes con fechas y temas, notas, horario, chats de Perla, ajustes) y el bucket `fotos` guarda las imágenes. Se sincroniza solo a los 3 s de cada cambio; “Guardar ahora” fuerza y “Bajar de la nube” restaura en otro dispositivo.
 
-**Estado (11/11, tarde):** ✅ login con Google, sincronización y **IA de fotos funcionando**. La función `procesar-foto` (Gemini 3.8 Flash) lee la foto del horario y devuelve las clases (con vista previa antes de agregarlas), y lee fotos de apuntes para completar texto + resumen. Incluye reintentos automáticos si Gemini está saturado y mensajes de error claros.
+**Estado (11/11, tarde):** ✅ login con Google, sincronización y **botón “Actualizar la app”** (borra caché y recarga) funcionando. El service worker ahora pide HTML/JS/CSS a la red primero, así las versiones nuevas se toman solas.
+
+**IA pendiente de estabilizar:** la función `procesar-foto` arranca y lista los modelos (GET `?models=1`), pero las llamadas a `generateContent` con **gemini-3.8-flash** se cuelgan desde Supabase y cortan por timeout (60 s). La clave sí tiene `gemini-2.5-flash`, `gemini-flash-latest` y otros. Próximos intentos: setear `GEMINI_MODEL=gemini-2.5-flash`, o mover la llamada a un Cloudflare Worker.
+
+**Seguridad pendiente:** la función valida el JWT solo por el payload (sin firma) y el gateway tiene “Verify JWT” apagado. Hay que verificar la firma (JWKS) o volver a activar la verificación del gateway.
 
 **Siguiente (a elección):**
 1. Fotos del plan → temas automáticos.
