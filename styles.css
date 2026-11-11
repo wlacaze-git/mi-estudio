@@ -2238,3 +2238,6 @@ input, textarea, select, button { font-family: inherit; }
 .cloud-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .cloud-error { margin-top: 6px; color: #9f1239; font-size: 0.85rem; }
 .link-btn { padding: 0; border: 0; background: transparent; color: var(--primary-dark); font: inherit; text-decoration: underline; cursor: pointer; }
+
+.onboarding-cloud { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line-strong); text-align: center; }
+.onboarding-or { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }

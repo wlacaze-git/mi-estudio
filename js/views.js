@@ -1781,6 +1781,7 @@ export function renderQuestionForm(state, { question = null, subjectId = '' } = 
 }
 
 export function renderOnboarding() {
+  const cloud = cloudSnapshot();
   return `
     <div class="onboarding">
       <span class="onboarding-emoji" aria-hidden="true">🎒</span>
@@ -1793,6 +1794,14 @@ export function renderOnboarding() {
         </label>
         <button type="submit" class="btn btn-primary btn-block">Empezar</button>
       </form>
+      ${cloud.enabled ? `
+        <div class="onboarding-cloud">
+          <span class="onboarding-or">o entrá directo</span>
+          ${cloud.user
+            ? `<p class="muted small">Ya estás conectado como <strong>${esc(cloud.user.email || '')}</strong>. Tocá “Empezar” y listo.</p>`
+            : `<button type="button" class="btn btn-soft btn-block" data-action="cloud-signin" data-provider="google">Entrar con Google</button>
+               <p class="muted small">Con Google guardamos tu progreso en la nube y lo recuperás en otro dispositivo.</p>`}
+        </div>` : ''}
       <p class="muted small">Después podés cambiar todo desde Ajustes.</p>
     </div>`;
 }

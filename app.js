@@ -1770,6 +1770,32 @@ subscribe(() => {
 
 render();
 
+const cloudAuthError = authUrlError();
+if (cloudAuthError) toast('No se pudo entrar: ' + cloudAuthError, 'warn');
+
+initCloud().catch((error) => console.warn('Nube:', error));
+
+let lastCloudError = '';
+let lastCloudUser = '';
+onCloudChange((snapshot) => {
+  if (snapshot.error && snapshot.error !== lastCloudError) {
+    lastCloudError = snapshot.error;
+    toast(snapshot.error, 'warn');
+  }
+  if (snapshot.user && snapshot.user.id !== lastCloudUser) {
+    lastCloudUser = snapshot.user.id;
+    const input = document.querySelector('form[data-form="onboarding"] input[name="student"]');
+    if (input && !input.value) {
+      const meta = snapshot.user.user_metadata || {};
+      const suggested = meta.full_name || meta.name || String(snapshot.user.email || '').split('@')[0];
+      if (suggested) input.value = suggested;
+    }
+  }
+  if (route.view === 'perfil') render();
+});
+
+window.addEventListener('online', () => schedulePush());
+
 if (!state.student && !state.settings.onboarded) {
   showModal('onboarding');
 }
