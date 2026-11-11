@@ -67,6 +67,15 @@ function isLocalEmpty() {
   return !(s.attempts || []).length && !(s.daysStudied || []).length && !(s.xp || 0);
 }
 
+async function waitForVendor(timeout = 4000) {
+  const start = Date.now();
+  while (!(window.supabase && typeof window.supabase.createClient === 'function')) {
+    if (Date.now() - start > timeout) return false;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return true;
+}
+
 export async function initCloud() {
   if (!CLOUD_ENABLED) {
     cloud.status = 'off';
@@ -76,7 +85,8 @@ export async function initCloud() {
   if (initializing) return initializing;
   initializing = (async () => {
     try {
-      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      const vendorReady = await waitForVendor();
+      if (!vendorReady) {
         cloud.status = 'off';
         cloud.error = 'La librería de la nube no está cargada.';
         emit();
