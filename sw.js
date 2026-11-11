@@ -1,5 +1,5 @@
 /* Service worker: deja la app disponible sin internet. */
-const CACHE = 'mi-estudio-v18';
+const CACHE = 'mi-estudio-v19';
 const ASSETS = [
   './',
   './index.html',

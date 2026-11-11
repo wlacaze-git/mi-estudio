@@ -92,7 +92,7 @@ export async function initCloud() {
         cloud.boundProfileId = localStorage.getItem(BOUND_KEY) || activeProfileId();
         localStorage.setItem(BOUND_KEY, cloud.boundProfileId);
         cloud.status = 'idle';
-        if (isLocalEmpty()) await downloadNow({ silent: true }).catch(() => {});
+        setTimeout(() => { syncOnLogin().catch(() => {}); }, 0);
       } else {
         cloud.status = 'signed-out';
       }
@@ -141,6 +141,28 @@ function checkProfile() {
     emit();
     throw new Error('Este perfil no es el que sincroniza. Tocá “Usar este perfil” para conectarlo.');
   }
+}
+
+async function remoteExists() {
+  if (!client || !cloud.user) return false;
+  const { data, error } = await client
+    .from('estados')
+    .select('user_id')
+    .eq('user_id', cloud.user.id)
+    .maybeSingle();
+  if (error) return false;
+  return Boolean(data);
+}
+
+export async function syncOnLogin() {
+  await initCloud();
+  if (!client || !cloud.user) return;
+  if (isLocalEmpty()) {
+    const pulled = await downloadNow({ silent: true }).catch(() => false);
+    if (!pulled) await pushNow().catch(() => {});
+    return;
+  }
+  if (!(await remoteExists())) await pushNow().catch(() => {});
 }
 
 export async function pushNow() {
