@@ -64,6 +64,47 @@ Esos dos datos son los que hay que pasarle al proyecto para conectar la app.
 
 ---
 
+## Arquitectura completa (10 personas, todo en Free)
+
+```
+iPad / compu
+   │  (1) login Google / Apple
+   ▼
+Supabase Auth  ──────────────►  Postgres (estado, apuntes, resúmenes, preguntas)
+   │                                   ▲
+   │  (2) foto                         │ (4) texto + resumen
+   ▼                                   │
+Supabase Storage (bucket privado)      │
+   │                                   │
+   │  (3) Edge Function ──► Gemini API (clave secreta)
+   ▼
+respuesta JSON: texto, temas, resumen, preguntas
+```
+
+- **Datos**: el estado de la app (materias, planes, notas, XP) se guarda como JSON por cuenta en Postgres. Con 10 personas son unos pocos MB: el límite de 500 MB sobra.
+- **Fotos**: se suben comprimidas (~200 KB) a `fotos/<user_id>/...`. 1 GB alcanza para ~5.000 fotos. Si querés ahorrar, después del OCR se puede borrar el original y guardar solo el texto y una miniatura.
+- **IA**: la Edge Function guarda la clave de Gemini como *secret* (nunca en la app), recibe la foto, pide el texto y el resumen, y devuelve JSON. El plan Free incluye **500.000 invocaciones/mes** ([precios](https://supabase.com/docs/guides/functions/pricing)): con 10 personas sobra.
+- **Resúmenes y preguntas**: se guardan en el mismo estado o en tablas `resumenes` / `preguntas`. Sirven para las estaciones (12 preguntas/día) y para “explicame este tema”.
+
+### Números para 10 personas
+
+| Concepto | Uso estimado | Límite Free |
+| --- | --- | --- |
+| Base | < 5 MB | 500 MB |
+| Fotos | ~50 MB/año | 1 GB |
+| Invocaciones IA | ~1.000/mes | 500.000/mes |
+| Usuarios | 10 | 50.000 |
+| Egress | < 5 GB/mes | 5 GB/mes |
+
+### Apple: sí, pero con requisitos
+
+- Requiere **Apple Developer** (99 USD/año) y crear un **Services ID** + clave `.p8`.
+- En Supabase se activa el proveedor Apple con Team ID, Key ID, Services ID y la clave.
+- **Mantenimiento**: Apple exige **rotar el secret cada 6 meses**; si no, el login deja de funcionar ([documentación](https://supabase.com/docs/guides/auth/social-sign-in/auth-apple)).
+- Si no querés pagar eso ahora, se puede arrancar **solo con Google** y sumar Apple después; la app queda igual.
+
+---
+
 ## Cómo queda el diseño (para implementar)
 
 - **Login**: botón “Entrar con Google” en Perfil/Ajustes. La sesión se guarda y se renueva sola.
@@ -80,9 +121,15 @@ Esos dos datos son los que hay que pasarle al proyecto para conectar la app.
 
 1. `js/cloud.js`: cliente de Supabase (CDN, sin build), login/logout, sync y subida de fotos.
 2. `js/config.js`: URL + anon key (vacías = todo local como hoy).
-3. UI en Perfil: “Entrar con Google”, estado de sincronización, “Sincronizar ahora”.
-4. Migración: al entrar por primera vez, subir lo local; al entrar en otro equipo, bajar lo que haya.
-5. Tests: modo sin config (no rompe nada) y sync simulado.
+3. UI en Perfil: “Entrar con Google” (y “Entrar con Apple” si está configurado), estado de sincronización, “Sincronizar ahora”.
+4. `supabase/functions/procesar-foto`: Edge Function que recibe la imagen, llama a Gemini y devuelve texto + resumen + preguntas.
+5. Migración: al entrar por primera vez, subir lo local; al entrar en otro equipo, bajar lo que haya.
+6. Tests: modo sin config (no rompe nada) y sync simulado.
+
+### Variables secretas de la Edge Function
+
+- `GEMINI_API_KEY` (secreta, se carga en Supabase → Edge Functions → Secrets).
+- La `anon key` va en la app (es pública); la `service_role` **nunca** va en la app.
 
 ---
 
