@@ -150,7 +150,10 @@ La app ya tiene los botones **“Leer con IA”** en la foto del horario y en el
 
 - **Horario**: subir la foto y tocar **“Leer con IA”** → muestra las clases leídas → **Agregar**.
 - **Apuntes**: agregar una foto y tocar **“Leer la foto con IA”** → completa el texto y el resumen.
+- **Estaciones**: en la lección, **“Generar 12 preguntas con IA”** crea preguntas a partir de tus apuntes (se guardan en la materia y quedan sincronizadas).
 - Si falta la clave o la función, la app muestra el error exacto.
+
+> La función acepta **foto o texto**. Para que “Generar 12 preguntas” funcione hay que **republicar** la función con el código actual. Si no, va a responder “Falta la imagen”.
 
 Con 10 personas, la cuota gratuita de Gemini y las 500.000 invocaciones de Edge Functions sobran. Si Gemini limita por minuto, la app avisa para reintentar.
 

@@ -117,32 +117,34 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const image = body.image;
+    const text = typeof body.text === "string" ? body.text.trim() : "";
     const mode = body.mode || "apunte";
     const count = Math.min(Math.max(Number(body.count) || 10, 3), 20);
 
-    if (!image || typeof image !== "string") return json({ error: "Falta la imagen" }, 400);
+    if (!image && !text) return json({ error: "Falta la imagen o el texto" }, 400);
+    if (mode === "horario" && !image) return json({ error: "El horario necesita una foto" }, 400);
     if (!PROMPTS[mode]) return json({ error: "Modo inválido" }, 400);
 
     const key = Deno.env.get("GEMINI_API_KEY");
     if (!key) return json({ error: "Falta configurar GEMINI_API_KEY en Supabase" }, 500);
 
-    const match = image.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/);
+    const match = typeof image === "string"
+      ? image.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/)
+      : null;
     const mimeType = match ? match[1] : "image/jpeg";
-    const data = match ? match[2] : image;
-    if (data.length > 12_000_000) return json({ error: "La imagen es demasiado grande" }, 413);
+    const data = match ? match[2] : (image || "");
+    if (data && data.length > 12_000_000) return json({ error: "La imagen es demasiado grande" }, 413);
 
     const prompt = mode === "preguntas"
       ? `${PROMPTS[mode]}\nGenerá exactamente ${count} preguntas.`
       : PROMPTS[mode];
 
+    const parts: Array<Record<string, unknown>> = [{ text: prompt }];
+    if (text) parts.push({ text: `Contenido para generar las preguntas:\n${text.slice(0, 15000)}` });
+    if (image) parts.push({ inlineData: { mimeType, data } });
+
     const payload = {
-      contents: [{
-        role: "user",
-        parts: [
-          { text: prompt },
-          { inlineData: { mimeType, data } },
-        ],
-      }],
+      contents: [{ role: "user", parts }],
       generationConfig: {
         temperature: 0.2,
         responseMimeType: "application/json",

@@ -226,30 +226,38 @@ export async function syncOnLogin() {
   if (!(await remoteExists())) await pushNow().catch(() => {});
 }
 
-export async function analizarFoto(dataUrl, mode = 'apunte', extra = {}) {
+async function invokeAI(body) {
   await initCloud();
   if (!client) throw new Error('La nube no está disponible en este momento.');
   if (!cloud.user) throw new Error('Entrá con tu cuenta para usar la IA.');
-  const { data, error } = await client.functions.invoke('procesar-foto', {
-    body: { image: dataUrl, mode, ...extra },
-  });
+  const { data, error } = await client.functions.invoke('procesar-foto', { body });
   if (error) {
     let detail = error.message || 'La función de IA devolvió un error';
     try {
       if (error.context && typeof error.context.json === 'function') {
-        const body = await error.context.json();
-        detail = body.error || body.message || body.msg || detail;
+        const payload = await error.context.json();
+        detail = payload.error || payload.message || payload.msg || detail;
       }
     } catch {
       /* sin detalle */
     }
     throw new Error(friendly(detail));
   }
-  if (data && data.error) throw new Error(data.error);
+  if (data && data.error) throw new Error(friendly(data.error));
   return data;
 }
 
-export async function pushNow() {  await initCloud();
+export async function analizarFoto(dataUrl, mode = 'apunte', extra = {}) {
+  return invokeAI({ image: dataUrl, mode, ...extra });
+}
+
+export async function generarPreguntas({ texto = '', materia = '', tema = '', count = 12 }) {
+  const content = [materia, tema, texto].filter(Boolean).join('\n\n');
+  return invokeAI({ text: content, mode: 'preguntas', count });
+}
+
+export async function pushNow() {
+  await initCloud();
   if (!client) throw new Error('La nube no está disponible en este momento.');
   checkProfile();
   cloud.status = 'syncing';

@@ -15,7 +15,7 @@ import {
 } from './js/ui.js';
 import { animalAvatar, animalForLevel, orderedAnimals } from './js/animals.js';
 import { buildReply, gradeQuestion, welcomeText } from './js/perla.js';
-import { analizarFoto, authUrlError, bindToCurrentProfile, downloadNow, initCloud, onCloudChange, pushNow, schedulePush, signIn, signOut } from './js/cloud.js';
+import { analizarFoto, authUrlError, bindToCurrentProfile, downloadNow, generarPreguntas, initCloud, onCloudChange, pushNow, schedulePush, signIn, signOut } from './js/cloud.js';
 import {
   blobToDataURL, dataURLToBlob, deleteImage, deleteImages, getImageBlob,
   hydrate, imageUrl, putImage, saveFile,
@@ -1113,8 +1113,56 @@ document.addEventListener('click', async (event) => {
       toast(created ? `${created} ${created === 1 ? 'clase agregada' : 'clases agregadas'}` : 'No había clases nuevas');
       return;
     }
-    case 'ai-note': {
-      const ids = noteDraft ? [...noteDraft.ids] : [];
+    case 'ai-station-questions': {
+      const plan = getState().exams.find((item) => item.id === el.dataset.plan);
+      if (!plan) return;
+      const station = planStations(plan).stations.find((item) => item.key === el.dataset.key);
+      if (!station) return;
+      const subject = getState().subjects.find((item) => item.id === plan.subjectId);
+      const notes = (getState().notes || []).filter((note) => note.subjectId === plan.subjectId);
+      const topic = String(station.topic || '').toLowerCase();
+      const matching = notes.filter((note) => `${note.title} ${note.body}`.toLowerCase().includes(topic));
+      const source = (matching.length ? matching : notes)
+        .map((note) => `${note.title}\n${note.body}`)
+        .join('\n\n')
+        .slice(0, 12000);
+      toast('Generando preguntas con IA…');
+      try {
+        const data = await generarPreguntas({
+          texto: source,
+          materia: subject ? subject.name : '',
+          tema: station.topic,
+          count: 12,
+        });
+        const nuevas = (data.preguntas || [])
+          .map((question) => {
+            const options = (question.opciones || []).map((option) => String(option || '').trim()).filter(Boolean).slice(0, 4);
+            const correct = Number(question.correcta);
+            if (!question.enunciado || options.length < 2 || !Number.isInteger(correct) || correct < 0 || correct >= options.length) return null;
+            return {
+              id: uid('q'),
+              subjectId: plan.subjectId,
+              topic: station.topic,
+              text: String(question.enunciado).trim(),
+              options,
+              correct,
+              explanation: String(question.explicacion || '').trim(),
+              ai: true,
+            };
+          })
+          .filter(Boolean);
+        if (!nuevas.length) {
+          toast('La IA no devolvió preguntas válidas', 'warn');
+          return;
+        }
+        update((s) => { s.questions.push(...nuevas); });
+        toast(`${nuevas.length} preguntas generadas`);
+      } catch (error) {
+        toast(error.message || 'No se pudieron generar preguntas', 'warn');
+      }
+      return;
+    }
+    case 'ai-note': {      const ids = noteDraft ? [...noteDraft.ids] : [];
       if (!ids.length) { toast('Agregá una foto primero', 'warn'); return; }
       try {
         const blob = await getImageBlob(ids[0]);

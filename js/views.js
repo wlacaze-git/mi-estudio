@@ -2221,9 +2221,10 @@ export function renderLeccion(state, plan, station, { today }) {
 
     <div class="leccion-actions">
       <button type="button" class="btn btn-primary" data-action="start-station" data-plan="${esc(plan.id)}" data-key="${esc(station.key)}">Empezar las ${count} preguntas</button>
+      ${available < 12 ? `<button type="button" class="btn btn-soft" data-action="ai-station-questions" data-plan="${esc(plan.id)}" data-key="${esc(station.key)}">✨ Generar 12 preguntas con IA</button>` : ''}
       <button type="button" class="btn btn-soft" data-action="read-lesson">🔊 Escuchar</button>
       <button type="button" class="btn btn-plain" data-action="open-pizarra" data-plan="${esc(plan.id)}" data-key="${esc(station.key)}">Ver en pizarra</button>
-      ${available && available < 10 ? `<span class="muted small">Hay ${available} preguntas cargadas: se repiten un poco para completar las 12. Si agregás más en Materias, la estación varía más.</span>` : ''}
+      ${available && available < 10 ? `<span class="muted small">Hay ${available} preguntas cargadas. Con “Generar con IA” se crean 12 a partir de tus apuntes.</span>` : ''}
     </div>
   `;
 }
