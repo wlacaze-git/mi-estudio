@@ -6,6 +6,17 @@
 
 ---
 
+## Próximo paso decidido (11/11): Supabase plan FREE
+
+Se eligió **Supabase Free** para cuentas (Google), sincronización y fotos. La app seguirá siendo local-first: si el proyecto está pausado o no hay internet, se estudia igual y sincroniza después.
+
+- Guía de puesta en marcha: [SUPABASE.md](SUPABASE.md).
+- SQL para tablas, bucket y reglas: [supabase/schema.sql](supabase/schema.sql).
+- **Bloqueado hasta tener**: Project URL + anon public key del proyecto de Supabase (los crea el usuario).
+- A tener en cuenta: el plan Free **pausa el proyecto tras 7 días sin actividad**; se reactiva desde el panel y los datos quedan. Sin backups automáticos (usar el backup `.json` de la app).
+
+---
+
 ## Novedades del 11/11
 
 Hecho en esta tanda:
